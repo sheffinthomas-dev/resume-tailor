@@ -1,0 +1,2323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resume Tailor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="resume_logic.js"></script>
+<style>
+  :root{
+    --bg:#f1f2f8;--panel:#ffffff;--panel-2:#f7f8fc;
+    --border:#e3e6f0;--border-strong:#c9cee0;
+    --ink:#1b1f3b;--muted:#6b7190;--muted-2:#8d93ab;
+    --primary:#4f46e5;--primary-ink:#ffffff;--primary-hover:#4338ca;--primary-soft:#edebfd;
+    --success-ink:#1f8a52;
+    --danger:#d1453b;--danger-soft:#fdecea;
+    --add:#e3f6ea;--add-ink:#1f6b3a;--del:#fdecea;--del-ink:#a13a26;
+    --radius-sm:6px;--radius:10px;--radius-lg:16px;
+    --shadow-sm:0 1px 2px rgba(20,22,50,.07);
+    --shadow:0 6px 18px rgba(20,22,50,.09);
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;line-height:1.55}
+  ::selection{background:var(--primary-soft)}
+  code{background:var(--panel-2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:.85em}
+
+  header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;box-shadow:var(--shadow-sm)}
+  .brand{display:flex;align-items:center;gap:12px}
+  .brand-mark{width:38px;height:38px;border-radius:11px;background:linear-gradient(135deg,var(--primary),#7c6cf0);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.9rem;flex-shrink:0;box-shadow:var(--shadow-sm)}
+  header h1{margin:0;font-size:1.12rem;font-weight:800;letter-spacing:-.01em}
+  .build-tag{font-size:.64rem;color:var(--muted-2);font-weight:600;margin-left:6px;background:var(--panel-2);border:1px solid var(--border);padding:1px 7px;border-radius:999px;vertical-align:middle}
+  header p{margin:2px 0 0;color:var(--muted);font-size:.82rem;max-width:480px}
+  .projbtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .projbtns .divider{width:1px;height:22px;background:var(--border);margin:0 2px}
+
+  main{display:grid;grid-template-columns:400px 1fr;gap:22px;padding:24px 28px 64px;max-width:1360px;margin:0 auto;align-items:start}
+  /* Grid/flex items default to a min-width equal to their content's unwrapped (min-content)
+     width, which ignores any overflow-x:auto a descendant sets. That's what was letting the
+     tab strip (full of flex-shrink:0, white-space:nowrap tabs) force this column — and the
+     whole page — wider than the viewport on every size, not just mobile. min-width:0 lets each
+     track genuinely shrink to the space it's given, so overflow-x:auto on .tabs actually scrolls
+     instead of blowing the layout out. */
+  main > *{min-width:0}
+  @media(max-width:980px){main{grid-template-columns:1fr}}
+  .left-col{display:flex;flex-direction:column;gap:16px;position:sticky;top:84px;min-width:0}
+  @media(max-width:980px){.left-col{position:static}}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;box-shadow:var(--shadow-sm);min-width:0}
+  .step-head{display:flex;align-items:center;gap:10px;margin:0 0 14px}
+  .step-num{width:26px;height:26px;border-radius:50%;background:var(--primary-soft);color:var(--primary);font-size:.8rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .step-title{font-size:1rem;font-weight:800;flex:1}
+
+  .drop{border:2px dashed var(--border-strong);border-radius:var(--radius);padding:22px 16px;text-align:center;color:var(--muted);cursor:pointer;font-size:.85rem;background:var(--panel-2);transition:border-color .15s,color .15s,background .15s}
+  .drop:hover,.drop.over{border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+  .drop input{display:none}
+
+  textarea{width:100%;border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;font-family:inherit;font-size:.86rem;resize:vertical;background:var(--panel);color:var(--ink);transition:border-color .15s,box-shadow .15s}
+  textarea:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+
+  .filename{margin-top:7px;font-size:.8rem;color:var(--primary);word-break:break-all;font-weight:600}
+  .urlrow{display:flex;gap:8px;margin-top:10px}
+  .urlrow input{flex:1;padding:9px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem}
+
+  details{margin-top:0}
+  summary{cursor:pointer;font-weight:800;font-size:.92rem;list-style:none;display:flex;align-items:center;gap:8px;padding:2px 0}
+  summary::-webkit-details-marker{display:none}
+  summary::before{content:"▸";font-size:.72rem;color:var(--muted);transition:transform .15s;display:inline-block}
+  details[open] summary::before{transform:rotate(90deg)}
+
+  .field{margin-top:10px}
+  .field label{display:block;font-size:.78rem;color:var(--muted);margin-bottom:4px;font-weight:600}
+  .field input,.field select{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:.85rem;background:#fff;transition:border-color .15s,box-shadow .15s}
+  .field input:focus,.field select:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+  .row{display:flex;gap:10px}
+  .row>*{flex:1}
+
+  button{font-family:inherit}
+  button.primary{background:var(--primary);color:var(--primary-ink);border:none;border-radius:var(--radius);padding:13px 18px;font-size:.92rem;font-weight:700;cursor:pointer;width:100%;margin-top:6px;box-shadow:var(--shadow-sm);transition:background .15s,transform .1s}
+  button.primary:hover:not(:disabled){background:var(--primary-hover)}
+  button.primary:active:not(:disabled){transform:translateY(1px)}
+  button.primary:disabled{opacity:.5;cursor:default}
+  button.secondary{background:var(--panel);color:var(--ink);border:1px solid var(--border);border-radius:var(--radius);padding:9px 14px;font-size:.82rem;font-weight:600;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+  button.secondary:hover:not(:disabled){border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+  button.secondary:disabled{opacity:.45;cursor:default}
+  button.secondary.danger{color:var(--danger);border-color:#f3cac6}
+  button.secondary.danger:hover:not(:disabled){background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+  button.tiny{background:var(--panel);border:1px solid var(--border);border-radius:999px;padding:4px 11px;font-size:.72rem;font-weight:700;cursor:pointer;color:var(--ink);transition:border-color .15s,color .15s,background .15s}
+  button.tiny:hover:not(:disabled){border-color:var(--primary);color:var(--primary);background:var(--primary-soft)}
+  button.tiny:disabled{opacity:.4;cursor:default}
+  button.tiny.danger{color:var(--danger);border-color:#f3cac6}
+  button.tiny.danger:hover:not(:disabled){background:var(--danger-soft);border-color:var(--danger);color:var(--danger)}
+  /* Dynamically-generated action buttons: color by intent without touching any JS/markup logic */
+  button.tiny[data-action="retailor"]{color:var(--primary);border-color:#d7d4fb}
+  button.tiny[data-action="remove"]{color:var(--danger);border-color:#f3cac6}
+  button.tiny[data-action="remove"]:hover:not(:disabled){background:var(--danger-soft);border-color:var(--danger)}
+
+  .status{margin-top:12px;font-size:.84rem;padding:11px 14px;border-radius:var(--radius);display:none;border:1px solid transparent;line-height:1.5}
+  .status.show{display:flex;align-items:flex-start;gap:8px;animation:statusIn .15s ease-out}
+  .status.info{background:var(--primary-soft);color:var(--primary-hover);border-color:#dcdcfb}
+  .status.info::before{content:"ℹ";font-weight:800}
+  .status.error{background:var(--danger-soft);color:var(--danger);border-color:#f8d4d1}
+  .status.error::before{content:"⚠";font-weight:800}
+  @keyframes statusIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+
+  .note{font-size:.78rem;color:var(--muted);margin-top:8px;line-height:1.6}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;padding-bottom:3px}
+  .tabs::-webkit-scrollbar{height:4px}
+  .tabs::-webkit-scrollbar-thumb{background:var(--border-strong);border-radius:4px}
+  .tab{padding:7px 14px;border-radius:999px;font-size:.82rem;font-weight:700;cursor:pointer;border:1px solid var(--border);color:var(--muted);white-space:nowrap;flex-shrink:0;transition:all .15s;background:var(--panel-2)}
+  .tab:hover{border-color:var(--primary);color:var(--primary)}
+  .tab.active{background:var(--primary);color:#fff;border-color:var(--primary);box-shadow:var(--shadow-sm)}
+
+  .pane{display:none}
+  .pane.active{display:block;animation:paneIn .12s ease-out}
+  @keyframes paneIn{from{opacity:0}to{opacity:1}}
+
+  .section-block{border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:12px;background:var(--panel-2);transition:box-shadow .15s}
+  .section-block:hover{box-shadow:var(--shadow-sm)}
+  .section-block .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px;flex-wrap:wrap}
+  .section-block .sh strong{font-weight:800;font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em}
+  .section-block .sh span{display:flex;gap:6px;flex-wrap:wrap}
+  .section-block textarea{min-height:80px;background:#fff}
+
+  .diffbox{border:1px solid var(--border);border-radius:var(--radius);padding:14px;font-size:.85rem;min-height:150px;max-height:340px;overflow:auto;white-space:pre-wrap;background:var(--panel-2);line-height:1.7}
+  .diffbox ins{background:var(--add);color:var(--add-ink);text-decoration:none;border-radius:3px;padding:0 2px}
+  .diffbox del{background:var(--del);color:var(--del-ink);border-radius:3px;padding:0 2px}
+
+  .atsbar{height:10px;background:var(--border);border-radius:999px;overflow:hidden;margin:8px 0}
+  .atsbar div{height:100%;background:linear-gradient(90deg,var(--primary),#7c6cf0);border-radius:999px;transition:width .3s}
+  .kw{display:inline-block;font-size:.74rem;padding:3px 10px;border-radius:999px;margin:3px 4px 0 0;font-weight:700}
+  .kw.hit{background:var(--add);color:var(--add-ink)}
+  .kw.miss{background:var(--del);color:var(--del-ink)}
+
+  .output-actions{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+  .output-actions button{flex:1;min-width:130px}
+
+  /* ============ Responsive design ============ */
+  /* Prevent any stray wide element (long filename, wrapped table, etc.) from forcing
+     a page-level horizontal scrollbar on narrow viewports. */
+  html,body{max-width:100%;overflow-x:hidden}
+  img,svg{max-width:100%}
+
+  /* ----- Tablet / narrow desktop (<=980px): main already collapses to 1 column above.
+     Tighten the outer layout and make the sticky header wrap cleanly. ----- */
+  @media(max-width:980px){
+    header{padding:12px 18px}
+    main{padding:18px 18px 48px;gap:16px}
+  }
+
+  /* ----- Tablet portrait / large phone (<=760px) ----- */
+  @media(max-width:760px){
+    header{flex-direction:column;align-items:stretch;gap:10px}
+    .brand{gap:10px}
+    header p{max-width:none}
+    .projbtns{justify-content:flex-start}
+    .projbtns .divider{display:none}
+    main{grid-template-columns:1fr}
+    .card{padding:16px}
+    .row{flex-direction:column;gap:10px}
+    .row>*{width:100%}
+    .output-actions{flex-direction:column}
+    .output-actions button{min-width:0;width:100%}
+    .urlrow{flex-direction:column}
+    .urlrow button{width:100%}
+    #paneAsk .row[style*="align-items:flex-end"]{align-items:stretch}
+    #askWordLimit{width:100% !important}
+    div[style*="width:140px"]{width:100% !important}
+
+    /* A horizontally-scrolling tab strip is the wrong pattern on touch screens — it hides most
+       of the tabs with no visual hint that more exist, and the scroll gesture competes with the
+       page's own vertical scroll. Swap it for a tap-friendly grid of chips that wraps onto as
+       many rows as it needs: every tab is visible and reachable at once, nothing to "find" by
+       swiping. Same .tab elements, same click handler, same data-pane attribute — only how the
+       row lays them out changes. */
+    .tabs{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:8px;
+      overflow:visible;
+      padding-bottom:0;
+    }
+    .tab{
+      flex-shrink:initial;
+      white-space:normal;
+      text-align:center;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      min-height:42px;
+      line-height:1.2;
+      padding:8px 6px;
+    }
+  }
+
+  /* ----- Phone (<=480px) ----- */
+  @media(max-width:480px){
+    body{line-height:1.5}
+    header{padding:10px 14px}
+    header h1{font-size:1rem}
+    header p{font-size:.78rem}
+    .build-tag{display:block;margin:2px 0 0;width:fit-content}
+    .brand-mark{width:32px;height:32px;border-radius:9px;font-size:.78rem}
+    .projbtns{width:100%}
+    main{padding:14px 12px 40px;gap:14px}
+    .card{padding:13px;border-radius:12px}
+    .step-title{font-size:.92rem}
+    textarea{font-size:16px} /* avoid iOS auto-zoom on focus */
+    .field input,.field select{font-size:16px}
+    .urlrow input{font-size:16px}
+    button.primary{padding:12px 14px;font-size:.88rem}
+    button.secondary{padding:9px 12px;font-size:.8rem;width:100%}
+    .output-actions button.secondary{width:100%}
+    .tabs{margin-bottom:11px;gap:6px}
+    .tab{padding:7px 4px;font-size:.72rem;min-height:38px}
+    .section-block{padding:11px}
+    .diffbox{font-size:.8rem;padding:11px;max-height:280px}
+    .kw{font-size:.7rem;padding:3px 8px}
+    #stylePreview{padding:13px}
+    #paneAsk .row{gap:10px !important}
+    #paneAsk label[style*="flex:none"]{flex:none}
+  }
+
+  /* Applications table: keep it scrollable sideways instead of squeezing columns unreadably. */
+  @media(max-width:600px){
+    #appsList table{font-size:.78rem}
+    #appsList td,#appsList th{padding:6px 6px !important;white-space:nowrap}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="brand-mark">RT</div>
+    <div>
+      <h1>Resume Tailor<span class="build-tag">build 17</span></h1>
+      <p>Tailor your resume per job, edit section by section, save your progress, and come back to it any time.</p>
+    </div>
+  </div>
+  <div class="projbtns">
+    <button class="secondary" id="saveProjBtn">Save project</button>
+    <button class="secondary" id="loadProjBtn">Load project</button>
+    <input type="file" id="loadProjInput" accept=".json" style="display:none">
+    <span class="divider"></span>
+    <button class="secondary danger" id="resetAppBtn">Reset</button>
+  </div>
+</header>
+
+<main>
+  <div class="left-col">
+    <div class="card">
+      <h2 class="step-head"><span class="step-num">1</span><span class="step-title">Your resume</span><button class="tiny danger" id="clearResumeBtn">Clear</button></h2>
+      <div class="drop" id="drop">📄 Drag &amp; drop .pdf / .docx / .txt, or click to choose
+        <input type="file" id="fileInput" accept=".txt,.docx,.pdf"></div>
+      <div class="filename" id="fileName"></div>
+      <textarea id="resumeText" style="min-height:130px" placeholder="Or paste your resume text here..."></textarea>
+      <p class="note" id="formatNote"></p>
+    </div>
+
+    <div class="card">
+      <h2 class="step-head"><span class="step-num">2</span><span class="step-title">Job description</span><button class="tiny danger" id="clearJobBtn">Clear</button></h2>
+      <textarea id="jobText" style="min-height:130px" placeholder="Paste the full job posting..."></textarea>
+      <div class="urlrow">
+        <input id="jobUrl" placeholder="...or a job posting URL to auto-fetch">
+        <button class="secondary" id="fetchUrlBtn">Fetch</button>
+      </div>
+      <p class="note">URL fetch needs <code>local_relay.py</code> running.</p>
+    </div>
+
+    <div class="card">
+      <details id="apiDetails">
+        <summary>⚙ API settings</summary>
+        <div class="field" style="margin-top:12px"><label>API base URL</label><input id="apiBase" placeholder="http://localhost:8787/v1"></div>
+        <div class="field"><label>API key</label><input id="apiKey" type="password" placeholder="sk-..."></div>
+        <div class="row">
+          <div class="field"><label>Format</label><select id="apiFormat"><option value="openai">OpenAI-compatible</option><option value="anthropic">Anthropic-compatible</option></select></div>
+          <div class="field"><label>Model ID</label><input id="apiModel" placeholder="claude-haiku-4.5"></div>
+        </div>
+        <button class="secondary" id="saveApi" style="margin-top:10px">Save settings</button>
+        <button class="secondary danger" id="clearApi">Clear</button>
+        <p class="note">Never saved to project files — browser-local only.</p>
+      </details>
+    </div>
+
+    <div class="card">
+      <h2 class="step-head"><span class="step-num">3</span><span class="step-title">Tailor &amp; export</span></h2>
+      <div class="field" style="margin-top:0">
+        <label>Target resume length</label>
+        <select id="targetPages">
+          <option value="auto">Match my uploaded resume's page count</option>
+          <option value="1">1 page (condense to the strongest points)</option>
+          <option value="2">2 pages</option>
+        </select>
+        <button class="tiny" id="restoreDroppedBtn" style="display:none;margin-top:8px">Restore section(s) removed for page fit</button>
+      </div>
+      <button class="primary" id="runBtn">Tailor my resume</button>
+      <div class="status" id="status"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="tabs">
+      <div class="tab active" data-pane="paneOutput">📄 Sections</div>
+      <div class="tab" data-pane="panePreview">👁 Preview</div>
+      <div class="tab" data-pane="paneDiff">🔀 What changed</div>
+      <div class="tab" data-pane="paneAts">🎯 ATS check</div>
+      <div class="tab" data-pane="paneTrends">📈 Trends</div>
+      <div class="tab" data-pane="paneApps">📋 Applications</div>
+      <div class="tab" data-pane="paneEmail">✉ Email</div>
+      <div class="tab" data-pane="paneCoverLetter">📝 Cover Letter</div>
+      <div class="tab" data-pane="paneAsk">💬 Ask</div>
+    </div>
+
+    <div class="pane active" id="paneOutput">
+      <div class="note" style="background:var(--primary-soft);color:var(--primary-hover);padding:10px 12px;border-radius:var(--radius-sm);margin-bottom:12px" id="styleNote">
+        <strong>Export style:</strong> Default template — upload a resume to auto-detect its fonts, sizes, colors and margins.
+      </div>
+      <div id="sectionsContainer"><p class="note">Tailor your resume to see editable sections here, each with its own undo.</p></div>
+      <div class="output-actions">
+        <button class="secondary" id="copyBtn">Copy full resume</button>
+        <button class="secondary" id="downloadTxt">Download .txt</button>
+        <button class="secondary" id="downloadPdf">Download PDF</button>
+        <button class="secondary" id="downloadDocx">Download .docx</button>
+      </div>
+      <p class="note">PDF/DOCX export uses one consistent styled template built from your resume's structure — same look every export, rather than trying to clone an arbitrary uploaded PDF's exact design.</p>
+    </div>
+    <div class="pane" id="panePreview">
+      <p class="note">Live approximation of your PDF/DOCX export style — accent color, bold job titles, and bullets. Spacing here is only approximate; the actual export is the source of truth for exact layout.</p>
+      <div id="stylePreview" style="border:1px solid var(--border);border-radius:var(--radius);padding:18px;background:#fff"></div>
+    </div>
+    <div class="pane" id="paneDiff"><div class="diffbox" id="diffBox">Tailor your resume to see a comparison.</div></div>
+    <div class="pane" id="paneAts">
+      <div>Keyword match: <strong id="atsPct">—</strong></div>
+      <div class="atsbar"><div id="atsBar" style="width:0%"></div></div>
+      <div id="atsKeywords"></div>
+      <p class="note">Rough local estimate only — free, no API calls.</p>
+    </div>
+    <div class="pane" id="paneTrends">
+      <p class="note" id="trendsSummary">No job postings analyzed yet — tailor your resume against a few job postings to start seeing trends here.</p>
+      <div><strong style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Most common across postings you've tailored against</strong></div>
+      <div id="trendsList" style="margin-top:6px"></div>
+      <div style="margin-top:16px"><strong style="font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">Skill gaps (not yet in your current resume)</strong></div>
+      <div id="trendsGaps" style="margin-top:6px"></div>
+      <button class="secondary" id="clearTrendsBtn" style="margin-top:14px">Clear trend history</button>
+      <p class="note">Stored only in this browser, built from job postings you've actually tailored against — free local keyword analysis, no extra API calls. Coloring mirrors the ATS check: green already in your resume, red not yet (a learning opportunity).</p>
+    </div>
+    <div class="pane" id="paneApps">
+      <button class="secondary" id="logAppBtn">Log this application</button>
+      <div id="appsList" style="margin-top:10px"><p class="note">No applications logged yet.</p></div>
+      <p class="note">Applications are now logged automatically whenever you download a tailored resume (PDF/DOCX) or open an email draft in Gmail for the current job — use "Log this application" only if you want to set the company/role yourself up front, and "Edit" on any row to fix an auto-filled entry. Stored only in this browser, including a downloadable snapshot of the exact tailored resume text at the time it was logged.</p>
+    </div>
+    <div class="pane" id="paneEmail">
+      <div class="field"><label>Recruiter / HR email (optional)</label><input id="emailTo" placeholder="hr@company.com"></div>
+      <button class="secondary" id="generateEmailBtn" style="margin-top:8px">Generate application email</button>
+      <div class="field" style="margin-top:10px"><label>Subject</label><input id="emailSubject" placeholder="Generate an email to fill this in"></div>
+      <div class="field" style="margin-top:8px"><label>Body</label><textarea id="emailBody" style="min-height:220px" placeholder="Generate an email to fill this in — edit freely before sending."></textarea></div>
+      <div class="output-actions">
+        <button class="secondary" id="copyEmailBtn">Copy email</button>
+        <button class="secondary" id="openGmailBtn">Open in Gmail</button>
+      </div>
+      <p class="note">Drafted from your tailored resume and the job description, mentioning 2–3 of your most relevant, truthful qualifications — nothing invented. "Open in Gmail" opens a pre-filled compose window in your browser; the resume file itself still needs to be attached manually.</p>
+    </div>
+    <div class="pane" id="paneCoverLetter">
+      <button class="secondary" id="generateCoverLetterBtn">Generate cover letter</button>
+      <div class="field" style="margin-top:10px"><label>Cover letter</label><textarea id="coverLetterText" style="min-height:320px" placeholder="Generate a cover letter to fill this in — edit freely before sending."></textarea></div>
+      <div class="output-actions">
+        <button class="secondary" id="copyCoverLetterBtn">Copy cover letter</button>
+        <button class="secondary" id="downloadCoverLetterBtn">Download .txt</button>
+        <button class="secondary" id="downloadCoverLetterPdfBtn">Download PDF</button>
+      </div>
+      <p class="note">Drafted from your tailored resume and the job description — truthful, nothing invented. Edit freely before sending.</p>
+    </div>
+    <div class="pane" id="paneAsk">
+      <div class="field">
+        <label>Your question</label>
+        <textarea id="askQuestion" style="min-height:100px" placeholder="Ask anything — e.g. 'How should I phrase my leadership experience for this role?', 'What does this posting imply about team size?', or any personal career question."></textarea>
+      </div>
+      <div class="row" style="margin-top:8px;gap:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted);font-weight:600;flex:none"><input type="checkbox" id="askIncludeResume" checked style="width:auto">Include my tailored resume as context</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted);font-weight:600;flex:none"><input type="checkbox" id="askIncludeJob" checked style="width:auto">Include the job description as context</label>
+      </div>
+      <div class="row" style="margin-top:10px;gap:12px;align-items:flex-end">
+        <div class="field" style="margin-top:0"><label>What do you want?</label>
+          <select id="askMode"><option value="advice">Advice / analysis (for me)</option><option value="write">Write my answer (to submit in an application)</option></select></div>
+        <div class="field" style="margin-top:0;flex:none;width:140px"><label>Word limit (optional)</label><input id="askWordLimit" type="number" min="20" step="10" placeholder="e.g. 200"></div>
+      </div>
+      <p class="note" id="askModeHint" style="margin-top:6px">Gives candid advice or analysis about you or the job. Not written to be submitted.</p>
+      <button class="primary" id="askBtn" style="margin-top:10px">Ask</button>
+      <div class="field" style="margin-top:12px"><label>Answer</label><textarea id="askAnswer" style="min-height:220px" placeholder="Your answer will appear here."></textarea></div>
+      <div class="output-actions">
+        <button class="secondary" id="copyAskBtn">Copy answer</button>
+        <button class="secondary" id="askRegenBtn">Regenerate</button>
+        <button class="secondary" id="askShortenBtn">Make it shorter</button>
+      </div>
+      <p class="note">Uses the same API settings as the rest of the app. Not limited to resume tailoring — ask anything job-related or personal; the checkboxes above control whether your resume and/or the current job description are sent as context.</p>
+    </div>
+  </div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const drop = $('drop'), fileInput = $('fileInput'), fileName = $('fileName');
+const status = $('status');
+let header = {name:'', title:'', contact:''};
+let sections = [];       // [{key, label, text, history:[]}]
+let originalFullText = '';
+let originalPageCount = null;  // target page count for PDF export, from uploaded PDF
+
+// --- Auto-detected export style ---
+// Populated from the uploaded resume (DOCX: read directly from its XML — reliable.
+// PDF: reconstructed from rendered text/graphics — best-effort, see detectStylePdf).
+// Falls back to these hardcoded defaults (the original Sheffin_Thomas.pdf-matched values)
+// for anything that couldn't be detected.
+let STYLE = {
+  nameSz: 20, titleSz: 11, contactSz: 9.5, headSz: 10.5, bodySz: 10,
+  accentHex: '1F497D', accentRgb: [31,73,125],
+  pageWidthPt: 612, pageHeightPt: 792, // US Letter
+  marginXpt: 31, topYpt: 32, bottomMarginPt: 18, maxWidthPt: 550,
+  fontFamilyHint: null,   // best-effort label only (e.g. "Calibri") — actual rendered fonts stay Carlito (PDF) / referenced-by-name Calibri (DOCX) for licensing reasons either way
+  detectedFrom: null,     // null | 'docx' | 'pdf'
+  confidence: null        // null | 'high' | 'best-effort'
+};
+
+function hexToRgb(hex){ hex=(hex||'').replace('#',''); if(hex.length!==6) return null; const n=parseInt(hex,16); if(Number.isNaN(n)) return null; return [(n>>16)&255,(n>>8)&255,n&255]; }
+function rgbToHex(rgb){ return rgb.map(v=>Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0')).join(''); }
+
+function updateStyleNote(){
+  const el = $('styleNote');
+  if(!el) return;
+  const layoutBit = LAYOUT.detectedFrom ? ` Layout: ${updateLayoutNoteSuffix()}.` : '';
+  if(STYLE.detectedFrom === 'docx'){
+    el.innerHTML = `<strong>Export style:</strong> Auto-detected from your .docx (fonts, sizes, colors, margins read directly from the file — high confidence).${layoutBit} Name ${STYLE.nameSz}pt, body ${STYLE.bodySz}pt, accent #${STYLE.accentHex}.`;
+  } else if(STYLE.detectedFrom === 'pdf'){
+    el.innerHTML = `<strong>Export style:</strong> Auto-detected from your PDF (sizes, color and margins reconstructed from the rendered page — best-effort, not guaranteed pixel-exact; the embedded font itself can't be reliably reused).${layoutBit} Name ${STYLE.nameSz}pt, body ${STYLE.bodySz}pt, accent #${STYLE.accentHex}.`;
+  } else {
+    el.innerHTML = `<strong>Export style:</strong> Default template — upload a resume to auto-detect its fonts, sizes, colors, margins and layout.`;
+  }
+}
+
+function applyDetectedStyle(detected, source){
+  if(!detected) return;
+  if(detected.nameSize) STYLE.nameSz = detected.nameSize;
+  if(detected.titleSize) STYLE.titleSz = detected.titleSize;
+  if(detected.bodySize){ STYLE.bodySz = detected.bodySize; STYLE.contactSz = Math.max(8, detected.bodySize - 0.5); }
+  if(detected.headingSize) STYLE.headSz = detected.headingSize;
+  // Second line of defense beyond detectPdfColors' own validation: never let an invalid or
+  // implausible color (NaN, out-of-range, or a near-gray that isn't really a deliberate accent)
+  // overwrite the known-good default — this is what was silently turning headings/links black.
+  if(detected.accentRgb && isValidRgb(detected.accentRgb)){ STYLE.accentRgb = detected.accentRgb; STYLE.accentHex = rgbToHex(detected.accentRgb); }
+  else if(detected.accentHex){ const rgb = hexToRgb(detected.accentHex); if(rgb && isValidRgb(rgb)){ STYLE.accentRgb = rgb; STYLE.accentHex = detected.accentHex.replace('#',''); } }
+  if(detected.marginPt){
+    // Clamped to a sane narrow-to-normal range (~0.25in–0.75in). Detection (PDF especially,
+    // best-effort) can otherwise read a noisy or genuinely large margin off the source file
+    // with nothing capping it, which is what was producing wide DOCX/PDF margins regardless
+    // of the narrow defaults below. The clamp keeps exports consistently narrow without
+    // throwing away real detected values that are already reasonable.
+    const MIN_MARGIN_PT = 18, MAX_MARGIN_PT = 54;
+    const clamp = v => Math.max(MIN_MARGIN_PT, Math.min(MAX_MARGIN_PT, v));
+    STYLE.marginXpt = clamp(detected.marginPt.left);
+    STYLE.topYpt = clamp(detected.marginPt.top);
+    STYLE.bottomMarginPt = clamp(detected.marginPt.bottom);
+    if(detected.pageWidthPt) STYLE.pageWidthPt = detected.pageWidthPt;
+    if(detected.pageHeightPt) STYLE.pageHeightPt = detected.pageHeightPt;
+    const rightMarginRaw = detected.marginPt.right!=null ? detected.marginPt.right : detected.marginPt.left;
+    STYLE.maxWidthPt = STYLE.pageWidthPt - STYLE.marginXpt - clamp(rightMarginRaw);
+  }
+  if(detected.fontFamilyHint) STYLE.fontFamilyHint = detected.fontFamilyHint;
+  STYLE.detectedFrom = source;
+  STYLE.confidence = source==='docx' ? 'high' : 'best-effort';
+  updateStyleNote();
+}
+
+// --- Auto-detected layout (structure, not just palette) ---
+// STYLE (above) only recolors/resizes ONE fixed shape. LAYOUT picks WHICH shape:
+// header alignment, and whether short "sidebar" sections (Skills, Certifications, etc.)
+// render in a narrow left column instead of flowing inline with everything else.
+// This is a bounded picker across a composable pair of axes, not a full generic
+// layout-understanding engine — an upload that's neither centered/1-col nor
+// left/2-col-sidebar still snaps to whichever of those two it's closer to.
+const SIDEBAR_SECTION_KEYWORDS = /^(skills?|technical skills|core competencies|certifications?|languages?|tools?|technolog(y|ies)|interests?|awards?|contact|summary)\b/i;
+
+let LAYOUT = {
+  headerAlign: 'center',  // 'center' | 'left'
+  columns: 1,             // 1 | 2
+  detectedFrom: null      // null | 'docx' | 'pdf'
+};
+
+function classifySectionsForColumns(){
+  // Only meaningful when LAYOUT.columns===2. Short, list-like sections go in the sidebar;
+  // everything else (Experience, Education, Projects, ...) stays in the main column.
+  // Safety net: if the heuristic would put too much (or nothing) in the sidebar, the caller
+  // falls back to a single column rather than producing a lopsided or empty one.
+  const sidebar = [], main = [];
+  sections.forEach((s,i)=>{ (s.label && SIDEBAR_SECTION_KEYWORDS.test(s.label.trim())) ? sidebar.push(i) : main.push(i); });
+  return { sidebar, main };
+}
+
+function effectiveColumns(){
+  if(LAYOUT.columns !== 2) return 1;
+  const {sidebar, main} = classifySectionsForColumns();
+  if(!sidebar.length || !main.length || sidebar.length > sections.length/2) return 1; // fallback: not a clean split
+  return 2;
+}
+
+function updateLayoutNoteSuffix(){
+  const parts = [];
+  parts.push(LAYOUT.headerAlign==='left' ? 'left-aligned header' : 'centered header');
+  parts.push(effectiveColumns()===2 ? 'two-column with sidebar' : 'single column');
+  return parts.join(', ');
+}
+
+function applyDetectedLayout(detected, source){
+  if(!detected) return;
+  if(detected.headerAlign) LAYOUT.headerAlign = detected.headerAlign;
+  if(detected.columns) LAYOUT.columns = detected.columns;
+  LAYOUT.detectedFrom = source;
+}
+
+function showStatus(m,t){ status.textContent=m; status.className='status show '+t; }
+
+document.querySelectorAll('.tab').forEach(t=>t.addEventListener('click',()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('active'));
+  t.classList.add('active'); $(t.dataset.pane).classList.add('active');
+}));
+
+// --- Parsing resume into header + sections ---
+// mergeWrappedLines() and parseResume() now live in resume_logic.js (loaded as a plain global
+// script, above), shared with the Node test suite in resume_logic.test.js so it's the actual
+// parsing logic under test, not a separate copy of it.
+
+function assembleFullText(){
+  let out = header.name+'\n'+header.title+'\n'+(header.contactLines||[]).join('\n')+'\n\n';
+  sections.forEach(s=>{ if(s.label) out += s.label+'\n'; out += s.text+'\n\n'; });
+  return out.trim();
+}
+
+function renderSections(){
+  const c = $('sectionsContainer'); c.innerHTML='';
+  sections.forEach((s,i)=>{
+    const div = document.createElement('div'); div.className='section-block';
+    div.innerHTML = `<div class="sh"><strong>${s.label||'Header/Intro'}</strong>
+      <span>
+        <button class="tiny" data-action="retailor" data-i="${i}">Retailor section</button>
+        <button class="tiny" data-action="undo" data-i="${i}" ${s.history.length?'':'disabled'}>Undo section</button>
+      </span></div>
+      <textarea data-i="${i}">${s.text}</textarea>`;
+    c.appendChild(div);
+  });
+  c.querySelectorAll('textarea').forEach(ta=>ta.addEventListener('input',e=>{
+    sections[e.target.dataset.i].text = e.target.value; autoSave(); renderStyledPreview();
+  }));
+  c.querySelectorAll('button.tiny').forEach(b=>b.addEventListener('click',e=>{
+    const i = e.target.dataset.i, s = sections[i];
+    if(e.target.dataset.action==='undo'){
+      if(s.history.length){ s.text = s.history.pop(); renderSections(); autoSave(); }
+    } else if(e.target.dataset.action==='retailor'){
+      retailorOneSection(i);
+    }
+  }));
+  renderStyledPreview();
+}
+
+// Read-only live approximation of the final PDF/DOCX export style (accent color, bold job
+// titles, bullets), rendered as plain HTML/CSS — addresses the recurring confusion of only ever
+// seeing plain black text in the editable "Sections" tab, with the styled result only visible
+// after exporting. Reuses computeLineRoles() — the exact same role classifier the PDF/DOCX
+// exporters use — so bold/bullet decisions always match; spacing here is CSS flow layout, not
+// the hand-tuned pt measurements renderResume() uses for the real export, so treat it as a
+// close approximation, not a pixel-exact mirror.
+function renderStyledPreview(){
+  const el = $('stylePreview');
+  if(!el) return;
+  if(!sections.length){ el.innerHTML = '<p class="note">Tailor or upload a resume to see a live preview here.</p>'; return; }
+  const accent = '#' + (STYLE.accentHex || '1F497D');
+  const align = LAYOUT.headerAlign === 'left' ? 'left' : 'center';
+  let html = `<div style="font-family:Calibri,Carlito,Arial,sans-serif;text-align:${align}">`;
+  html += `<div style="font-weight:700;font-size:${STYLE.nameSz}px;color:${accent}">${esc(header.name)}</div>`;
+  html += `<div style="font-size:${STYLE.titleSz}px;margin-top:2px">${esc(header.title)}</div>`;
+  (header.contactLines||[]).forEach(line=>{
+    const parts = line.split('|').map(p=>p.trim()).filter(Boolean);
+    html += `<div style="font-size:${STYLE.contactSz}px;margin-top:2px">` + parts.map(p=>{
+      const isLink = /\.com|@|linkedin|github/i.test(p);
+      return isLink ? `<span style="color:${accent};text-decoration:underline">${esc(p)}</span>` : esc(p);
+    }).join(' &nbsp;|&nbsp; ') + `</div>`;
+  });
+  html += `<hr style="border:none;border-top:2px solid ${accent};margin:10px 0">`;
+  html += `<div style="text-align:left">`;
+  sections.forEach(s=>{
+    if(s.label){
+      html += `<div style="font-weight:700;color:${accent};font-size:${STYLE.headSz}px;border-bottom:1px solid ${accent};padding-bottom:2px;margin-top:10px">${esc(s.label)}</div>`;
+    }
+    const lines = s.text.split('\n');
+    const roles = computeLineRoles(lines);
+    lines.forEach((line,li)=>{
+      const role = roles[li];
+      const clean = role==='bullet' ? line.replace(/^\s*[-•*▪◦►]\s*/,'') : line;
+      if(!clean && role==='plain') return;
+      if(role==='bullet'){
+        html += `<div style="margin-left:18px;position:relative;font-size:${STYLE.bodySz}px"><span style="position:absolute;left:-14px">•</span>${linkifyHtml(clean, accent)}</div>`;
+      } else if(role==='subheader-bold'){
+        html += `<div style="font-weight:700;font-size:${STYLE.bodySz}px;margin-top:4px">${linkifyHtml(clean, accent)}</div>`;
+      } else {
+        html += `<div style="font-size:${STYLE.bodySz}px">${linkifyHtml(clean, accent)}</div>`;
+      }
+    });
+  });
+  html += `</div></div>`;
+  el.innerHTML = html;
+}
+
+async function retailorOneSection(i){
+  const cfg = { apiBase: $('apiBase').value.trim(), apiKey: $('apiKey').value.trim(), apiFormat: $('apiFormat').value, apiModel: $('apiModel').value.trim() };
+  const job = $('jobText').value.trim();
+  if(!cfg.apiBase||!cfg.apiKey||!cfg.apiModel){ showStatus('Fill in API settings first.','error'); $('apiDetails').open=true; return; }
+  if(!job){ showStatus('Add a job description first.','error'); return; }
+  const s = sections[i];
+  showStatus('Retailoring "'+(s.label||'this section')+'"...', 'info');
+  try{
+    const prompt = `JOB DESCRIPTION:\n${job}\n\nSECTION HEADING: ${s.label||'(no heading)'}\nCURRENT SECTION CONTENT:\n${s.text}\n\nRewrite ONLY this section's content to better match the job description, following the same rules (no invented skills/experience, keep bullet lines starting with '-', output only the rewritten section content, no heading, no preamble).`;
+    const result = (await callApi(cfg, prompt)).trim();
+    s.history.push(s.text);
+    s.text = result;
+    renderSections();
+    renderDiff(originalFullText, assembleFullText());
+    renderAts(job, assembleFullText());
+    autoSave();
+    showStatus('Section updated — use its Undo button if you want the previous version back.', 'info');
+  } catch(err){
+    let msg = err.message;
+    if(msg.includes('Failed to fetch')) msg = 'Request blocked or relay not running.';
+    showStatus('Failed: '+msg, 'error');
+  }
+}
+
+// --- File handling ---
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+drop.addEventListener('click',()=>fileInput.click());
+['dragover','dragenter'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.add('over');}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{ev.preventDefault();drop.classList.remove('over');}));
+drop.addEventListener('drop',e=>handleFile(e.dataTransfer.files[0]));
+fileInput.addEventListener('change',e=>handleFile(e.target.files[0]));
+
+// cleanBulletArtifacts() lives in resume_logic.js now (see note near assembleFullText above).
+
+// --- PDF style detection (best-effort — PDFs don't store semantic style metadata) ---
+function isValidRgb(rgb){
+  return Array.isArray(rgb) && rgb.length===3 && rgb.every(v => Number.isFinite(v) && v>=0 && v<=255);
+}
+
+async function detectPdfColors(page){
+  // Walks the content stream's low-level drawing operators to reconstruct which fill color
+  // was active during each text-draw call, since getTextContent() itself carries no color.
+  // setFillColorN in particular covers Pattern/Separation/ICCBased color spaces where `args`
+  // is NOT guaranteed to be 3 plain [0,1] numbers (can be a pattern name, a 1-component tint,
+  // etc.) — an unvalidated read there was producing NaN/garbage "colors" that silently passed
+  // the old near-black/near-white checks and got accepted as the accent, rendering as black.
+  try{
+    const opList = await page.getOperatorList();
+    const OPS = pdfjsLib.OPS;
+    let current = [0,0,0];
+    const counts = new Map();
+    let firstTextColor = null;
+    for(let i=0;i<opList.fnArray.length;i++){
+      const fn = opList.fnArray[i], args = opList.argsArray[i];
+      let candidate = null;
+      if(fn===OPS.setFillRGBColor && args && args.length>=3){ candidate = args.slice(0,3).map(v=>Math.round(v*255)); }
+      else if(fn===OPS.setFillGray && args && args.length>=1 && typeof args[0]==='number'){ const g=Math.round(args[0]*255); candidate=[g,g,g]; }
+      else if(fn===OPS.setFillColorN && args){
+        if(args.length===4 && args.every(v=>typeof v==='number')){ const [c,m,y,k]=args; candidate=[Math.round(255*(1-c)*(1-k)),Math.round(255*(1-m)*(1-k)),Math.round(255*(1-y)*(1-k))]; }
+        else if(args.length>=3 && args.slice(0,3).every(v=>typeof v==='number')){ candidate = args.slice(0,3).map(v=>Math.round((v<=1?v*255:v))); }
+        // else: pattern name / unrecognized shape — ignore, keep whatever `current` already was
+      }
+      if(candidate && isValidRgb(candidate)) current = candidate;
+      if(fn===OPS.showText || fn===OPS.showSpacedText){
+        const key = current.join(',');
+        counts.set(key, (counts.get(key)||0)+1);
+        if(firstTextColor===null) firstTextColor = current.slice();
+      }
+    }
+    let accent=null, best=0;
+    for(const [key,count] of counts){
+      const rgb = key.split(',').map(Number);
+      if(!isValidRgb(rgb)) continue;
+      const nearBlack = rgb.every(v=>v<40), nearWhite = rgb.every(v=>v>230);
+      const saturation = Math.max(...rgb) - Math.min(...rgb);
+      const isGrayish = saturation < 15; // a genuine accent color is a distinct hue, not a shade of gray — rules out stray near-black artifacts too
+      if(!nearBlack && !nearWhite && !isGrayish && count>=3 && count>best){ accent=rgb; best=count; }
+    }
+    return { accent, firstTextColor };
+  } catch(e){ console.warn('PDF color detection failed:', e); return { accent:null, firstTextColor:null }; }
+}
+
+// Structural signals — separate from STYLE (palette). Best-effort: clusters text-item
+// x-positions to guess header alignment and whether the body reads as two columns
+// (a narrow sidebar + a wider main column) rather than one.
+function detectPdfHeaderAlign(nameItem, viewport){
+  if(!nameItem) return 'center';
+  const nameCenterX = nameItem.transform[4] + (nameItem.width||0)/2;
+  const offsetRatio = Math.abs(nameCenterX - viewport.width/2) / viewport.width;
+  return offsetRatio < 0.12 ? 'center' : 'left';
+}
+function detectPdfColumns(items, viewport, headerBottomY){
+  const body = items.filter(it=>it.transform[5] < headerBottomY);
+  if(body.length < 10) return 1;
+  const leftItems = body.filter(it=>it.transform[4] < viewport.width*0.42);
+  const rightItems = body.filter(it=>it.transform[4] > viewport.width*0.46 && it.transform[4] < viewport.width*0.96);
+  const ySpan = arr => arr.length ? Math.max(...arr.map(i=>i.transform[5])) - Math.min(...arr.map(i=>i.transform[5])) : 0;
+  const totalSpan = ySpan(body) || 1;
+  const leftLines = new Set(leftItems.map(it=>Math.round(it.transform[5]))).size;
+  const rightLines = new Set(rightItems.map(it=>Math.round(it.transform[5]))).size;
+  const enoughLeft = leftLines>=6 && ySpan(leftItems) > totalSpan*0.35;
+  const enoughRight = rightLines>=6 && ySpan(rightItems) > totalSpan*0.35;
+  return (enoughLeft && enoughRight) ? 2 : 1;
+}
+
+async function detectStylePdf(page, textContent){
+  try{
+    const viewport = page.getViewport({scale:1});
+    const items = textContent.items.filter(it=>it.str && it.str.trim());
+    if(!items.length) return null;
+    const sizeOf = it => Math.hypot(it.transform[2], it.transform[3]) || Math.abs(it.transform[0]) || 10;
+
+    // Body size = mode of sizes, weighted by character count, excluding the first couple lines (name/title).
+    const sorted = items.slice().sort((a,b)=> b.transform[5]-a.transform[5]); // top of page first
+    const bodyCandidates = sorted.slice(3);
+    const freq = new Map();
+    (bodyCandidates.length?bodyCandidates:sorted).forEach(it=>{
+      const sz = Math.round(sizeOf(it)*2)/2; // nearest 0.5pt
+      freq.set(sz, (freq.get(sz)||0) + it.str.length);
+    });
+    let bodySize=null, bestCount=0;
+    for(const [sz,count] of freq){ if(count>bestCount){ bestCount=count; bodySize=sz; } }
+
+    const nameSize = sorted[0] ? Math.round(sizeOf(sorted[0])*2)/2 : null;
+    const titleSize = sorted[1] ? Math.round(sizeOf(sorted[1])*2)/2 : null;
+
+    // Margins from the bounding box of all text on the page.
+    const xs = items.map(it=>it.transform[4]);
+    const xEnds = items.map(it=>it.transform[4]+(it.width||0));
+    const ys = items.map(it=>it.transform[5]);
+    const marginPt = {
+      left: Math.max(0, Math.min(...xs)),
+      right: Math.max(0, viewport.width - Math.max(...xEnds)),
+      top: Math.max(0, viewport.height - Math.max(...ys) - (nameSize||14)),
+      bottom: Math.max(0, Math.min(...ys))
+    };
+
+    const { accent } = await detectPdfColors(page);
+
+    // Font family: best-effort only, from pdf.js's generic style mapping; strip subset prefix.
+    let fontFamilyHint = null;
+    if(textContent.styles && sorted[0]){
+      const st = textContent.styles[sorted[0].fontName];
+      if(st && st.fontFamily) fontFamilyHint = st.fontFamily.replace(/^[A-Z]{6}\+/,'').split(',')[0].trim();
+    }
+
+    const headerAlign = detectPdfHeaderAlign(sorted[0], viewport);
+    const headerBottomY = sorted[0] ? sorted[0].transform[5] - (nameSize||14)*2.5 : viewport.height*0.85;
+    const columns = detectPdfColumns(items, viewport, headerBottomY);
+
+    return {
+      nameSize, titleSize, bodySize,
+      accentRgb: accent,
+      marginPt, pageWidthPt: viewport.width, pageHeightPt: viewport.height,
+      fontFamilyHint,
+      layout: { headerAlign, columns }
+    };
+  } catch(e){ console.warn('PDF style detection failed:', e); return null; }
+}
+
+async function extractPdfText(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  originalPageCount = pdf.numPages;
+  let text=''; let detected=null;
+  for(let i=1;i<=pdf.numPages;i++){
+    const page = await pdf.getPage(i); const content = await page.getTextContent();
+    if(i===1) detected = await detectStylePdf(page, content); // style from page 1 only
+    let lastY=null;
+    content.items.forEach(item=>{
+      if(lastY!==null && Math.abs(item.transform[5]-lastY)>2) text+='\n';
+      else if(lastY!==null) text+=' ';
+      text+=item.str; lastY=item.transform[5];
+    });
+    text+='\n\n';
+  }
+  return { text: text.replace(/[ \t]+\n/g,'\n').trim(), detected };
+}
+
+// --- DOCX style detection (high-confidence — read directly from the file's XML) ---
+async function detectStyleFromDocx(file){
+  try{
+    const buf = await file.arrayBuffer();
+    const zip = await JSZip.loadAsync(buf);
+    const docEntry = zip.file('word/document.xml');
+    if(!docEntry) return null;
+    const docXmlStr = await docEntry.async('text');
+    const docXml = new DOMParser().parseFromString(docXmlStr, 'application/xml');
+    const W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const attr = (el,name) => el.getAttributeNS(W,name) || el.getAttribute('w:'+name);
+
+    let marginPt = null;
+    const pgMar = docXml.getElementsByTagNameNS(W,'pgMar')[0];
+    if(pgMar){
+      const twips = n => parseInt(attr(pgMar,n)||'0',10);
+      marginPt = { top: twips('top')/20, bottom: twips('bottom')/20, left: twips('left')/20, right: twips('right')/20 };
+    }
+
+    const runEls = Array.from(docXml.getElementsByTagNameNS(W,'r'));
+    const runs = [];
+    runEls.forEach(r=>{
+      const text = Array.from(r.getElementsByTagNameNS(W,'t')).map(t=>t.textContent).join('');
+      if(!text.trim()) return;
+      const rPr = r.getElementsByTagNameNS(W,'rPr')[0];
+      let font=null, size=null, color=null, bold=false;
+      if(rPr){
+        const rFonts = rPr.getElementsByTagNameNS(W,'rFonts')[0];
+        if(rFonts) font = attr(rFonts,'ascii');
+        const sz = rPr.getElementsByTagNameNS(W,'sz')[0];
+        if(sz) size = parseInt(attr(sz,'val'),10)/2;
+        const clr = rPr.getElementsByTagNameNS(W,'color')[0];
+        if(clr){ const v = attr(clr,'val'); if(v && v.toLowerCase()!=='auto') color = v; }
+        bold = !!rPr.getElementsByTagNameNS(W,'b')[0];
+      }
+      runs.push({text, font, size, color, bold});
+    });
+    if(!runs.length) return null;
+
+    const bodyPool = runs.slice(3).length ? runs.slice(3) : runs;
+    const freq = new Map();
+    bodyPool.forEach(r=>{
+      if(r.size==null) return;
+      const key = (r.font||'')+'|'+r.size;
+      freq.set(key, (freq.get(key)||0)+r.text.length);
+    });
+    let bodyFont=null, bodySize=null, best=0;
+    for(const [key,count] of freq){ if(count>best){ best=count; const [f,s]=key.split('|'); bodyFont=f||null; bodySize=parseFloat(s); } }
+
+    const nameSize = runs[0] ? runs[0].size : null;
+    const titleSize = runs[1] ? runs[1].size : null;
+
+    const colorFreq = new Map();
+    runs.forEach(r=>{ if(r.color) colorFreq.set(r.color, (colorFreq.get(r.color)||0)+1); });
+    let accentHex=null, bestColor=0;
+    for(const [hex,count] of colorFreq){
+      const rgb = hexToRgb(hex);
+      if(!rgb || !isValidRgb(rgb)) continue;
+      const saturation = Math.max(...rgb) - Math.min(...rgb);
+      if(saturation < 15) continue; // a gray/near-black formatting color isn't a deliberate accent
+      if(count>bestColor){ bestColor=count; accentHex=hex; }
+    }
+
+    const headingRuns = runs.filter(r=>r.bold && r.color && r.size!=null);
+    const headFreq = new Map();
+    headingRuns.forEach(r=>headFreq.set(r.size,(headFreq.get(r.size)||0)+1));
+    let headingSize=null, bestHead=0;
+    for(const [sz,count] of headFreq){ if(count>bestHead){ bestHead=count; headingSize=sz; } }
+
+    // Header alignment: justification of the first paragraph containing text.
+    let headerAlign = 'center';
+    const paragraphs = Array.from(docXml.getElementsByTagNameNS(W,'p'));
+    const firstTextPara = paragraphs.find(p => Array.from(p.getElementsByTagNameNS(W,'t')).some(t=>t.textContent.trim()));
+    if(firstTextPara){
+      const pPr = firstTextPara.getElementsByTagNameNS(W,'pPr')[0];
+      const jc = pPr && pPr.getElementsByTagNameNS(W,'jc')[0];
+      const val = jc && attr(jc,'val');
+      if(val && val!=='center' && val!=='both') headerAlign = 'left';
+    }
+
+    // Columns: either a real multi-column section (w:cols numCols>1), or — the far more common
+    // resume trick — a borderless table used to fake a sidebar (a row with 2 cells where the
+    // first cell is noticeably narrower than the second, containing a meaningful chunk of text).
+    let columns = 1;
+    const cols = docXml.getElementsByTagNameNS(W,'cols')[0];
+    if(cols){ const num = parseInt(attr(cols,'num')||'1',10); if(num>1) columns = 2; }
+    if(columns===1){
+      const tables = Array.from(docXml.getElementsByTagNameNS(W,'tbl'));
+      for(const tbl of tables){
+        const firstRow = tbl.getElementsByTagNameNS(W,'tr')[0];
+        if(!firstRow) continue;
+        const cells = Array.from(firstRow.getElementsByTagNameNS(W,'tc'));
+        if(cells.length!==2) continue;
+        const cellText = c => Array.from(c.getElementsByTagNameNS(W,'t')).map(t=>t.textContent).join('').trim();
+        const cellWidth = c => { const tcPr=c.getElementsByTagNameNS(W,'tcPr')[0]; const w=tcPr&&tcPr.getElementsByTagNameNS(W,'tcW')[0]; return w?parseInt(attr(w,'w')||'0',10):0; };
+        const [t1,t2] = [cellText(cells[0]), cellText(cells[1])];
+        const [w1,w2] = [cellWidth(cells[0]), cellWidth(cells[1])];
+        if(t1.length>20 && t2.length>20 && w1>0 && w2>0){ columns = 2; break; }
+      }
+    }
+
+    return { marginPt, bodySize, nameSize, titleSize, accentHex, headingSize, fontFamilyHint: bodyFont, layout: { headerAlign, columns } };
+  } catch(e){ console.warn('DOCX style detection failed:', e); return null; }
+}
+
+function mammothHtmlToText(html){
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const lines = [];
+  function emit(text){ text = text.replace(/\s+/g,' ').trim(); if(text) lines.push(text); }
+  Array.from(doc.body.children).forEach(el=>{
+    const tag = el.tagName;
+    if(tag==='UL' || tag==='OL'){
+      Array.from(el.children).forEach(li=>{
+        if(li.tagName==='LI'){
+          const t = li.textContent.replace(/\s+/g,' ').trim();
+          if(t) lines.push('- ' + t);
+        }
+      });
+    } else {
+      emit(el.textContent);
+    }
+  });
+  return lines.join('\n');
+}
+
+async function handleFile(file){
+  if(!file) return;
+  fileName.textContent = file.name;
+  try{
+    let text;
+    LAYOUT = { headerAlign:'center', columns:1, detectedFrom:null }; // reset before each upload
+    if(file.name.toLowerCase().endsWith('.docx')){
+      const buf = await file.arrayBuffer();
+      // mammoth.extractRawText() silently drops Word's *native* bulleted/numbered lists — it
+      // keeps only the raw run text and discards the numbering, so a job entry whose bullets
+      // were applied via Word's bullet-list feature (rather than typed '- ' characters) comes
+      // out as plain unmarked lines. Both the parser and the exporter only recognize a bullet
+      // when a line visibly starts with one of -•*▪◦►, and computeLineRoles only bolds a job
+      // title when a bullet follows it — so those entries silently lost their bold title AND
+      // their bullets. Fix: convertToHtml preserves <ul>/<li>, then mammothHtmlToText re-flattens
+      // it to plain text, prefixing every list item with '- ' so it's recognized downstream
+      // exactly like a manually-typed bullet.
+      const mammothHtml = (await mammoth.convertToHtml({arrayBuffer: buf})).value;
+      text = mammothHtmlToText(mammothHtml);
+      const detected = await detectStyleFromDocx(file);
+      applyDetectedLayout(detected && detected.layout, detected ? 'docx' : null);
+      applyDetectedStyle(detected, detected ? 'docx' : null); // calls updateStyleNote() last, after LAYOUT is set
+    } else if(file.name.toLowerCase().endsWith('.pdf')){
+      const result = await extractPdfText(file);
+      text = result.text;
+      applyDetectedLayout(result.detected && result.detected.layout, result.detected ? 'pdf' : null);
+      applyDetectedStyle(result.detected, result.detected ? 'pdf' : null);
+    } else {
+      text = await file.text();
+      STYLE.detectedFrom = null; updateStyleNote(); // plain text carries no style info
+    }
+    text = cleanBulletArtifacts(text);
+    $('resumeText').value = text;
+    loadMasterResume(text);
+    updateStyleNote(); // re-check now that sections exist, since column-layout classification depends on section labels
+    $('formatNote').textContent = `Parsed ${sections.length} section(s). Edit below if the split looks off.`;
+  } catch(err){ showStatus('Could not read file: '+err.message,'error'); }
+}
+function loadMasterResume(text){
+  originalFullText = text;
+  const parsed = parseResume(text);
+  header = parsed.header; sections = parsed.sections;
+  clearSectionDropSnapshot(); // a prior resume's dropped sections shouldn't be "restorable" onto a new upload
+  renderSections(); autoSave();
+}
+$('resumeText').addEventListener('input', ()=>{ if(!sections.length) loadMasterResume($('resumeText').value); });
+
+// --- Job URL fetch ---
+$('fetchUrlBtn').addEventListener('click', async ()=>{
+  const url = $('jobUrl').value.trim();
+  if(!url){ showStatus('Paste a job URL first.','error'); return; }
+  const relayOrigin = ($('apiBase').value.trim()||'http://localhost:8787/v1').replace(/\/v1.*$/,'');
+  showStatus('Fetching...','info');
+  try{
+    const res = await fetch(relayOrigin+'/_fetch?url='+encodeURIComponent(url));
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const doc = new DOMParser().parseFromString(await res.text(),'text/html');
+    doc.querySelectorAll('script,style,noscript,nav,footer,header').forEach(e=>e.remove());
+    $('jobText').value = (doc.body?doc.body.innerText:doc.documentElement.innerText).replace(/\n{3,}/g,'\n\n').trim();
+    showStatus('Fetched — review before tailoring.','info'); autoSave();
+  } catch(e){ showStatus('Could not fetch (relay running? site may block bots). Paste manually.','error'); }
+});
+
+// --- API settings ---
+function loadApiSettings(){ try{ const s=JSON.parse(localStorage.getItem('resumeTailorApiConfig')||'{}');
+  $('apiBase').value=s.apiBase||''; $('apiKey').value=s.apiKey||''; $('apiFormat').value=s.apiFormat||'openai'; $('apiModel').value=s.apiModel||''; }catch(e){} }
+$('saveApi').addEventListener('click',()=>{ try{ localStorage.setItem('resumeTailorApiConfig',JSON.stringify({
+  apiBase:$('apiBase').value.trim(),apiKey:$('apiKey').value.trim(),apiFormat:$('apiFormat').value,apiModel:$('apiModel').value.trim()})); showStatus('Saved.','info'); }catch(e){showStatus('Error: '+e.message,'error');} });
+$('clearApi').addEventListener('click',()=>{ try{localStorage.removeItem('resumeTailorApiConfig');}catch(e){}
+  $('apiBase').value='';$('apiKey').value='';$('apiModel').value=''; showStatus('Cleared.','info'); });
+loadApiSettings();
+
+// --- Clear individual fields / full app reset ---
+$('clearResumeBtn').addEventListener('click', ()=>{
+  if(!confirm('Clear your resume text and all parsed sections?')) return;
+  $('resumeText').value = '';
+  fileName.textContent = '';
+  header = {name:'', title:'', contact:''};
+  sections = [];
+  originalFullText = '';
+  originalPageCount = null;
+  STYLE.detectedFrom = null;
+  LAYOUT = { headerAlign:'center', columns:1, detectedFrom:null };
+  clearSectionDropSnapshot();
+  renderSections();
+  updateStyleNote();
+  $('formatNote').textContent = '';
+  autoSave();
+  showStatus('Resume cleared.', 'info');
+});
+
+$('clearJobBtn').addEventListener('click', ()=>{
+  if(!confirm('Clear the job description and URL?')) return;
+  $('jobText').value = '';
+  $('jobUrl').value = '';
+  autoSave();
+  showStatus('Job description cleared.', 'info');
+});
+
+$('resetAppBtn').addEventListener('click', ()=>{
+  if(!confirm('Reset the whole app? This clears your resume, job description, tailored sections, diff, ATS check, email and cover letter, and the saved session in this browser. Your saved API settings (base URL/key/model) are kept.')) return;
+  $('resumeText').value = '';
+  $('jobText').value = '';
+  $('jobUrl').value = '';
+  fileName.textContent = '';
+  $('formatNote').textContent = '';
+  header = {name:'', title:'', contact:''};
+  sections = [];
+  originalFullText = '';
+  originalPageCount = null;
+  STYLE = { nameSz: 20, titleSz: 11, contactSz: 9.5, headSz: 10.5, bodySz: 10, accentHex: '1F497D', accentRgb: [31,73,125], pageWidthPt: 612, pageHeightPt: 792, marginXpt: 31, topYpt: 32, bottomMarginPt: 18, maxWidthPt: 550, fontFamilyHint: null, detectedFrom: null, confidence: null };
+  LAYOUT = { headerAlign: 'center', columns: 1, detectedFrom: null };
+  clearSectionDropSnapshot();
+  renderSections();
+  updateStyleNote();
+  $('diffBox').textContent = 'Tailor your resume to see a comparison.';
+  $('atsPct').textContent = '—'; $('atsBar').style.width = '0%'; $('atsKeywords').innerHTML = '';
+  $('emailTo').value = ''; $('emailSubject').value = ''; $('emailBody').value = '';
+  if($('coverLetterText')) $('coverLetterText').value = '';
+  if($('askQuestion')) $('askQuestion').value = '';
+  if($('askAnswer')) $('askAnswer').value = '';
+  $('targetPages').value = 'auto';
+  try{ localStorage.removeItem('resumeTailorSession'); }catch(e){}
+  showStatus('App reset. Your saved API settings were kept — use Clear inside API settings to remove those too.', 'info');
+});
+
+$('restoreDroppedBtn').addEventListener('click', ()=>{
+  if(!lastSectionDropSnapshot) return;
+  sections = lastSectionDropSnapshot.map(s=>({...s, history:s.history.slice()}));
+  lastSectionDropSnapshot = null;
+  renderSections(); autoSave(); updateDropRestoreButton();
+  showStatus('Restored the section(s) that were removed to fit the page target.', 'info');
+});
+
+// --- Auto-save session (no API key) ---
+function autoSave(){
+  try{ localStorage.setItem('resumeTailorSession', JSON.stringify({
+    header, sections: sections.map(s=>({key:s.key,label:s.label,text:s.text})),
+    resumeText: $('resumeText').value, jobText: $('jobText').value, jobUrl: $('jobUrl').value,
+    originalFullText, originalPageCount, savedAt: new Date().toISOString()
+  })); }catch(e){}
+}
+function restoreSession(){
+  try{
+    const s = JSON.parse(localStorage.getItem('resumeTailorSession')||'null');
+    if(!s) return;
+    header = s.header||header;
+    sections = (s.sections||[]).map(x=>({...x,history:[]}));
+    $('resumeText').value = s.resumeText||''; $('jobText').value = s.jobText||''; $('jobUrl').value = s.jobUrl||'';
+    originalFullText = s.originalFullText||'';
+    originalPageCount = s.originalPageCount||null;
+    if(sections.length){ renderSections(); showStatus('Restored your last session.','info'); }
+  }catch(e){}
+}
+restoreSession();
+
+// --- Save / Load project file ---
+$('saveProjBtn').addEventListener('click',()=>{
+  const data = { header, sections: sections.map(s=>({key:s.key,label:s.label,text:s.text})),
+    resumeText:$('resumeText').value, jobText:$('jobText').value, jobUrl:$('jobUrl').value,
+    originalFullText, originalPageCount, savedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download = 'resume_project_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+});
+$('loadProjBtn').addEventListener('click', ()=>$('loadProjInput').click());
+$('loadProjInput').addEventListener('change', async e=>{
+  const file = e.target.files[0]; if(!file) return;
+  try{
+    const data = JSON.parse(await file.text());
+    header = data.header||header;
+    sections = (data.sections||[]).map(x=>({...x,history:[]}));
+    $('resumeText').value = data.resumeText||''; $('jobText').value = data.jobText||''; $('jobUrl').value = data.jobUrl||'';
+    originalFullText = data.originalFullText||'';
+    originalPageCount = data.originalPageCount||null;
+    renderSections(); autoSave();
+    showStatus('Project loaded from '+(data.savedAt?data.savedAt.slice(0,10):'file')+'.','info');
+  }catch(err){ showStatus('Could not load project file: '+err.message,'error'); }
+});
+
+// --- Tailoring ---
+const SYSTEM_PROMPT = "You are a professional resume editor. Tailor the resume to the job description WITHOUT inventing skills, tools, employers, or metrics the candidate did not provide. Reorder and reword existing bullet points to mirror the job posting's language where truthful. Preserve the EXACT same section headers, in the same order, as given (all-caps lines). Keep bullet lines starting with '-'. If a Summary/Professional Summary/Objective section exists, rewrite it to be as short as possible — 2-3 concise sentences at most — even if the original was longer. If a Certifications/Licenses section exists, you MUST keep every single certificate listed in the original resume, in full and unabbreviated, never omitting, merging, or summarizing any of them, even if other sections need to be trimmed more to make room. Output ONLY the final tailored resume, no preamble.";
+
+async function callApi(cfg, userPrompt, systemPrompt){
+  const sys = systemPrompt || SYSTEM_PROMPT;
+  if(cfg.apiFormat==='openai'){
+    const res = await fetch(cfg.apiBase.replace(/\/$/,'')+'/chat/completions',{method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.apiKey},
+      body: JSON.stringify({model:cfg.apiModel,messages:[{role:'system',content:sys},{role:'user',content:userPrompt}],max_tokens:1800})});
+    if(!res.ok) throw new Error('HTTP '+res.status+': '+await res.text());
+    return (await res.json()).choices[0].message.content;
+  } else {
+    const res = await fetch(cfg.apiBase.replace(/\/$/,'')+'/messages',{method:'POST',
+      headers:{'Content-Type':'application/json','x-api-key':cfg.apiKey,'anthropic-version':'2023-06-01'},
+      body: JSON.stringify({model:cfg.apiModel,system:sys,messages:[{role:'user',content:userPrompt}],max_tokens:1800})});
+    if(!res.ok) throw new Error('HTTP '+res.status+': '+await res.text());
+    return ((await res.json()).content||[]).map(b=>b.text||'').join('');
+  }
+}
+
+// --- Application email generation ---
+const EMAIL_SYSTEM_PROMPT = "You write concise, professional job-application emails to accompany an attached resume. Using ONLY the resume content and job description given — never inventing skills, employers, or metrics — write an email that: opens with genuine, specific interest in the role (and company, if named in the job description), highlights 2-3 of the candidate's most relevant qualifications that clearly match the job description, mentions that their resume is attached (refer to it only as \"my resume\" — never as \"my tailored resume\" or \"tailored resume\"), and closes professionally with the candidate's name from the resume. Keep the body 120-180 words, confident and specific, no generic filler like 'I am writing to express my interest'. Do not use markdown formatting — no asterisks or underscores for bold or italics, plain text only. Respond with ONLY valid JSON, no markdown fences, no extra text, in exactly this shape: {\"subject\": \"...\", \"body\": \"...\"}";
+
+async function generateApplicationEmail(){
+  const cfg = { apiBase: $('apiBase').value.trim(), apiKey: $('apiKey').value.trim(), apiFormat: $('apiFormat').value, apiModel: $('apiModel').value.trim() };
+  const job = $('jobText').value.trim();
+  if(!cfg.apiBase||!cfg.apiKey||!cfg.apiModel){ showStatus('Fill in API settings first.','error'); $('apiDetails').open=true; return; }
+  if(!job){ showStatus('Add a job description first.','error'); return; }
+  if(!sections.length){ showStatus('Tailor a resume first.','error'); return; }
+  const btn = $('generateEmailBtn'); btn.disabled = true; btn.textContent = 'Generating...';
+  showStatus('Drafting application email...', 'info');
+  try{
+    const prompt = `RESUME:\n${assembleFullText()}\n\nJOB DESCRIPTION:\n${job}\n\nWrite the application email as instructed.`;
+    const raw = (await callApi(cfg, prompt, EMAIL_SYSTEM_PROMPT)).trim();
+    const cleaned = raw.replace(/^```(json)?/i,'').replace(/```$/,'').trim();
+    let parsed;
+    try{ parsed = JSON.parse(cleaned); }
+    catch(e){ parsed = { subject: `Application — ${header.name||'Resume'}`, body: cleaned }; } // fallback if the model didn't return clean JSON
+    $('emailSubject').value = stripMarkdownEmphasis(parsed.subject || '');
+    $('emailBody').value = stripMarkdownEmphasis(parsed.body || '');
+    showStatus('Email drafted — review and edit before sending.', 'info');
+  } catch(err){
+    let msg = err.message;
+    if(msg.includes('Failed to fetch')) msg = 'Request blocked or relay not running.';
+    showStatus('Failed: '+msg, 'error');
+  } finally { btn.disabled = false; btn.textContent = 'Generate application email'; }
+}
+$('generateEmailBtn').addEventListener('click', generateApplicationEmail);
+
+$('copyEmailBtn').addEventListener('click', async ()=>{
+  const text = `Subject: ${$('emailSubject').value}\n\n${$('emailBody').value}`;
+  try{ await navigator.clipboard.writeText(text); showStatus('Email copied to clipboard.','info'); }
+  catch(e){ showStatus('Could not copy automatically — select the text manually instead.','error'); }
+});
+$('openGmailBtn').addEventListener('click', ()=>{
+  if(!$('emailBody').value.trim()){ showStatus('Generate the email first.','error'); return; }
+  const to = encodeURIComponent($('emailTo').value.trim());
+  const su = encodeURIComponent($('emailSubject').value);
+  const body = encodeURIComponent($('emailBody').value);
+  window.open(`https://mail.google.com/mail/?view=cm&fs=1&to=${to}&su=${su}&body=${body}`, '_blank');
+  autoLogApplication();
+});
+
+// --- Cover letter generation ---
+const COVER_LETTER_SYSTEM_PROMPT = "You write professional, specific cover letters using ONLY the resume content and job description given — never inventing skills, employers, metrics, or experience. Structure: an opening paragraph with genuine, specific interest in the role (and company, if named in the job description); 1-2 body paragraphs connecting the candidate's most relevant, truthful experience and skills to the job's actual requirements, mirroring the posting's language where honest; a closing paragraph reiterating interest and inviting next steps. Address it 'Dear Hiring Manager,' unless a specific name is given in the job description. Sign off with the candidate's name from the resume. Keep it 250-400 words, confident and specific, no generic filler like 'I am writing to apply for'. Do not use markdown formatting — no asterisks or underscores for bold or italics, plain text only. Output ONLY the final cover letter text — no subject line, no markdown fences, no preamble or explanation.";
+
+async function generateCoverLetter(){
+  const cfg = { apiBase: $('apiBase').value.trim(), apiKey: $('apiKey').value.trim(), apiFormat: $('apiFormat').value, apiModel: $('apiModel').value.trim() };
+  const job = $('jobText').value.trim();
+  if(!cfg.apiBase||!cfg.apiKey||!cfg.apiModel){ showStatus('Fill in API settings first.','error'); $('apiDetails').open=true; return; }
+  if(!job){ showStatus('Add a job description first.','error'); return; }
+  if(!sections.length){ showStatus('Tailor a resume first.','error'); return; }
+  const btn = $('generateCoverLetterBtn'); btn.disabled = true; btn.textContent = 'Generating...';
+  showStatus('Drafting cover letter...', 'info');
+  try{
+    const prompt = `RESUME:\n${assembleFullText()}\n\nJOB DESCRIPTION:\n${job}\n\nWrite the cover letter as instructed.`;
+    const result = stripMarkdownEmphasis((await callApi(cfg, prompt, COVER_LETTER_SYSTEM_PROMPT)).trim());
+    $('coverLetterText').value = result;
+    showStatus('Cover letter drafted — review and edit before sending.', 'info');
+  } catch(err){
+    let msg = err.message;
+    if(msg.includes('Failed to fetch')) msg = 'Request blocked or relay not running.';
+    showStatus('Failed: '+msg, 'error');
+  } finally { btn.disabled = false; btn.textContent = 'Generate cover letter'; }
+}
+$('generateCoverLetterBtn').addEventListener('click', generateCoverLetter);
+
+$('copyCoverLetterBtn').addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText($('coverLetterText').value); showStatus('Cover letter copied to clipboard.','info'); }
+  catch(e){ showStatus('Could not copy automatically — select the text manually instead.','error'); }
+});
+$('downloadCoverLetterBtn').addEventListener('click', ()=>{
+  const blob = new Blob([$('coverLetterText').value], {type:'text/plain'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'cover_letter.txt'; a.click();
+});
+
+// Plain, single-column text PDF — a cover letter has no section/bullet structure to mirror
+// from STYLE/LAYOUT (those describe the resume template), so this renders simple wrapped
+// paragraphs with standard margins rather than reusing renderResume().
+$('downloadCoverLetterPdfBtn').addEventListener('click', async () => {
+  const text = $('coverLetterText').value.trim();
+  if(!text){ showStatus('Generate a cover letter first.','error'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'letter'});
+  const gotCarlito = await loadCarlito(doc);
+  const FONT = gotCarlito ? 'Carlito' : 'helvetica';
+  const marginX = 60, marginTop = 60, marginBottom = 60;
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const maxWidth = pageWidth - marginX*2;
+  const bodySz = 11, lineHeight = bodySz*1.4;
+  doc.setFont(FONT,'normal'); doc.setFontSize(bodySz); doc.setTextColor(20,20,20);
+  let y = marginTop;
+  text.split('\n').forEach(para=>{
+    if(!para.trim()){ y += lineHeight; return; }
+    doc.splitTextToSize(para, maxWidth).forEach(line=>{
+      if(y + lineHeight > pageHeight - marginBottom){ doc.addPage(); y = marginTop; }
+      doc.text(line, marginX, y);
+      y += lineHeight;
+    });
+  });
+  doc.save('cover_letter.pdf');
+  showStatus('Cover letter PDF downloaded.', 'info');
+});
+
+// --- Custom question ("Ask") ---
+// Free-form Q&A, independent of the tailor/email/cover-letter flows — can be about the current
+// job application, or a general career/personal question with no resume or job context at all,
+// depending on which checkboxes are ticked.
+// Two intents, two prompts. ADVICE answers questions ABOUT the user or the job (candid, second
+// person, never meant to be submitted). WRITE drafts the user's own answer to an application-form
+// question: first person, applicant voice, submit-ready, only facts from the resume.
+const ASK_ADVICE_SYSTEM_PROMPT = "You are a knowledgeable, candid career and job-search assistant. Answer the user's question directly and helpfully. If resume and/or job description context is provided below, use it to make your answer specific — but you can also answer general career or personal questions with no resume or job context at all. Do not invent facts about the user's resume or experience beyond what's given. Do not use markdown formatting — no asterisks or underscores for bold or italics, plain text only. Keep answers concise but complete.";
+const ASK_WRITE_SYSTEM_PROMPT = "You are writing an answer to a job-application question on behalf of the applicant. Write in the first person, as the applicant, in a natural, confident, professional voice, addressed to the hiring team. Use only facts from the provided resume; never invent experience, tools, or metrics. Connect the applicant's real strengths to the job description's key requirements. Do not list weaknesses or gaps, and do not give advice or commentary. Do not mention the resume or the job description as documents. If the job asks for something the resume does not show, either omit it or frame it honestly as something the applicant is actively building toward, but only if the resume supports that. Output plain text: no headings, no bullets, no markdown. Write 150-250 words unless the question or a word limit specifies a different length. Do not add a greeting or sign-off unless the question asks for one. Output only the answer itself.";
+// Openers that usually mean the user pasted an actual application-form question. Used only to
+// pick a default mode while the user hasn't chosen one themselves.
+const ASK_WRITE_TRIGGER_RE = /^\s*(explain why|describe|tell us|tell me about|why do you want|why are you|why should we|what makes you|what interests you|what motivates you|how would you|walk us through|share an example|give an example)/i;
+let askModeManuallySet = false;
+function countWords(t){ return (t.trim().match(/\S+/g)||[]).length; }
+function getAskLimit(){ const n = parseInt($('askWordLimit').value, 10); return n > 0 ? n : null; }
+// Models sometimes add markdown headings or bullet markers despite being told not to; a
+// submit-ready answer should be plain paragraphs.
+function cleanWriteAnswer(t){ return stripMarkdownEmphasis(t).replace(/^#{1,6}\s*/gm, '').replace(/^\s*[-•*]\s+/gm, '').trim(); }
+function updateAskModeHint(){
+  $('askModeHint').textContent = $('askMode').value === 'write'
+    ? 'Writes a first-person answer you can paste into an application form. Uses only facts from your resume.'
+    : 'Gives candid advice or analysis about you or the job. Not written to be submitted.';
+}
+
+async function askCustomQuestion(){
+  const cfg = { apiBase: $('apiBase').value.trim(), apiKey: $('apiKey').value.trim(), apiFormat: $('apiFormat').value, apiModel: $('apiModel').value.trim() };
+  const question = $('askQuestion').value.trim();
+  if(!cfg.apiBase||!cfg.apiKey||!cfg.apiModel){ showStatus('Fill in API settings first.','error'); $('apiDetails').open=true; return; }
+  if(!question){ showStatus('Type a question first.','error'); return; }
+  if($('askBtn').disabled) return; // a request is already running (Ask and Regenerate share this)
+  const writeMode = $('askMode').value === 'write';
+  const includeResume = $('askIncludeResume').checked && sections.length;
+  const includeJob = $('askIncludeJob').checked && $('jobText').value.trim();
+  // Without the resume the model has no facts to draw on and would have to invent them.
+  if(writeMode && !includeResume){ showStatus('"Write my answer" needs your resume as context so it only uses real facts. Tailor or upload a resume and tick "Include my tailored resume".', 'error'); return; }
+  const limit = getAskLimit();
+  const btn = $('askBtn'); btn.disabled = true; btn.textContent = 'Asking...';
+  showStatus(writeMode ? 'Drafting your answer...' : 'Asking...', 'info');
+  try{
+    let context = '';
+    if(includeResume) context += `MY RESUME:\n${assembleFullText()}\n\n`;
+    if(includeJob) context += `JOB DESCRIPTION:\n${$('jobText').value.trim()}\n\n`;
+    let prompt, system;
+    if(writeMode){
+      system = ASK_WRITE_SYSTEM_PROMPT;
+      prompt = `${context}APPLICATION QUESTION:\n${question}` + (limit ? `\n\nKeep it under ${limit} words.` : '');
+    } else {
+      system = ASK_ADVICE_SYSTEM_PROMPT;
+      prompt = `${context}QUESTION:\n${question}`;
+    }
+    const raw = (await callApi(cfg, prompt, system)).trim();
+    const answer = writeMode ? cleanWriteAnswer(raw) : stripMarkdownEmphasis(raw);
+    $('askAnswer').value = answer;
+    const words = countWords(answer);
+    if(writeMode && limit && words > limit) showStatus(`Drafted (${words} words, over your ${limit}-word limit). Click "Make it shorter".`, 'info');
+    else showStatus(writeMode ? `Answer drafted (${words} words). Review and edit before submitting.` : 'Answered.', 'info');
+  } catch(err){
+    let msg = err.message;
+    if(msg.includes('Failed to fetch')) msg = 'Request blocked or relay not running.';
+    showStatus('Failed: '+msg, 'error');
+  } finally { btn.disabled = false; btn.textContent = 'Ask'; }
+}
+// Rewrites the current Write-mode answer shorter, keeping only facts already in it (so no new
+// claims can appear), to ~70-75% of its length or under the word limit if one is set.
+async function shortenAskAnswer(){
+  const cfg = { apiBase: $('apiBase').value.trim(), apiKey: $('apiKey').value.trim(), apiFormat: $('apiFormat').value, apiModel: $('apiModel').value.trim() };
+  const current = $('askAnswer').value.trim();
+  if(!cfg.apiBase||!cfg.apiKey||!cfg.apiModel){ showStatus('Fill in API settings first.','error'); $('apiDetails').open=true; return; }
+  if($('askMode').value !== 'write'){ showStatus('"Make it shorter" works in "Write my answer" mode.', 'error'); return; }
+  if(!current){ showStatus('Draft an answer first.','error'); return; }
+  const limit = getAskLimit();
+  const cur = countWords(current);
+  const target = limit ? Math.min(limit, Math.round(cur*0.75)) : Math.round(cur*0.7);
+  const btn = $('askShortenBtn'); btn.disabled = true; btn.textContent = 'Shortening...';
+  showStatus('Shortening...', 'info');
+  try{
+    const prompt = `CURRENT ANSWER:\n${current}\n\nRewrite this answer in about ${target} words. Keep it in the first person, keep only facts already stated in it, keep the strongest points, and output only the rewritten answer.`;
+    const answer = cleanWriteAnswer((await callApi(cfg, prompt, ASK_WRITE_SYSTEM_PROMPT)).trim());
+    $('askAnswer').value = answer;
+    showStatus(`Shortened to ${countWords(answer)} words (was ${cur}).`, 'info');
+  } catch(err){
+    let msg = err.message;
+    if(msg.includes('Failed to fetch')) msg = 'Request blocked or relay not running.';
+    showStatus('Failed: '+msg, 'error');
+  } finally { btn.disabled = false; btn.textContent = 'Make it shorter'; }
+}
+$('askBtn').addEventListener('click', askCustomQuestion);
+$('askRegenBtn').addEventListener('click', askCustomQuestion);
+$('askShortenBtn').addEventListener('click', shortenAskAnswer);
+// Choosing a mode by hand turns auto-detect off until the question box is cleared.
+$('askMode').addEventListener('change', ()=>{ askModeManuallySet = true; updateAskModeHint(); });
+$('askQuestion').addEventListener('input', ()=>{
+  const q = $('askQuestion').value;
+  if(!q.trim()) askModeManuallySet = false;
+  if(askModeManuallySet) return;
+  $('askMode').value = ASK_WRITE_TRIGGER_RE.test(q) ? 'write' : 'advice';
+  updateAskModeHint();
+});
+$('copyAskBtn').addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText($('askAnswer').value); showStatus('Answer copied to clipboard.','info'); }
+  catch(e){ showStatus('Could not copy automatically — select the text manually instead.','error'); }
+});
+
+$('runBtn').addEventListener('click', async ()=>{
+  const cfg = {apiBase:$('apiBase').value.trim(),apiKey:$('apiKey').value.trim(),apiFormat:$('apiFormat').value,apiModel:$('apiModel').value.trim()};
+  const resumeRaw = $('resumeText').value.trim(), job = $('jobText').value.trim();
+  if(!cfg.apiBase||!cfg.apiKey||!cfg.apiModel){ showStatus('Fill in API settings first.','error'); $('apiDetails').open=true; return; }
+  if(!resumeRaw||!job){ showStatus('Add both resume and job description.','error'); return; }
+  recordJobForTrends(job); // capture this posting for the Trends tab regardless of API outcome
+  if(!sections.length) loadMasterResume(resumeRaw);
+  if(!originalFullText) originalFullText = resumeRaw;
+  clearSectionDropSnapshot(); // a fresh full tailor pass makes any earlier page-fit drop snapshot stale
+
+  const btn=$('runBtn'); btn.disabled=true; btn.textContent='Tailoring...';
+  showStatus('Calling your API...','info');
+  try{
+    // Always tailor from the PRISTINE original resume, never from whatever is currently in
+    // `sections` — those can already hold a PREVIOUS job's tailored (and possibly trimmed/
+    // condensed, e.g. down to 1 experience entry) output. Building the prompt from the mutated
+    // `sections` instead of `originalFullText` was the bug: tailoring against a 2nd job
+    // description silently compounded on top of the 1st job's result instead of starting over
+    // from the real master resume, so content the 1st pass dropped never came back.
+    const masterText = originalFullText;
+    const masterParsed = parseResume(masterText);
+    header = masterParsed.header;
+    sections = masterParsed.sections;
+    const prompt = `MASTER RESUME:\n${masterText}\n\nJOB DESCRIPTION:\n${job}\n\nTailor this resume to the job description.`;
+    const result = (await callApi(cfg,prompt)).trim();
+    const parsedResult = parseResume(header.name+'\n'+header.title+'\n'+(header.contactLines||[]).join('\n')+'\n\n'+result.replace(/^[\s\S]*?\n\n/,''));
+    // Align by position when counts match (most reliable — the model was told to
+    // preserve section order); otherwise fall back to punctuation-insensitive label matching.
+    const norm = s => (s||'').replace(/[^A-Z0-9]/gi,'').toUpperCase();
+    if(parsedResult.sections.length === sections.length){
+      parsedResult.sections.forEach((newSec, i)=>{
+        sections[i].history.push(sections[i].text);
+        sections[i].text = newSec.text;
+        sections[i].label = newSec.label || sections[i].label; // adopt any minor rewording of the heading itself
+      });
+    } else {
+      parsedResult.sections.forEach(newSec=>{
+        const existing = sections.find(s=>norm(s.label)===norm(newSec.label));
+        if(existing){ existing.history.push(existing.text); existing.text = newSec.text; }
+        else { sections.push({...newSec, history:[]}); }
+      });
+    }
+    renderSections();
+    renderDiff(originalFullText, assembleFullText());
+    renderAts(job, assembleFullText());
+    renderTrends();
+    autoSave();
+    showStatus('Done. Each section has its own Undo button above.','info');
+  } catch(err){
+    let msg = err.message;
+    if(msg.includes('Failed to fetch')) msg='Request blocked or relay not running.';
+    showStatus('Failed: '+msg,'error');
+  } finally { btn.disabled=false; btn.textContent='Tailor my resume'; }
+});
+
+// --- Diff ---
+function renderDiff(oldText,newText){
+  const a=oldText.split(/(\s+)/), b=newText.split(/(\s+)/);
+  const dp=Array.from({length:a.length+1},()=>new Array(b.length+1).fill(0));
+  for(let i=a.length-1;i>=0;i--) for(let j=b.length-1;j>=0;j--)
+    dp[i][j]=a[i]===b[j]?dp[i+1][j+1]+1:Math.max(dp[i+1][j],dp[i][j+1]);
+  let i=0,j=0,out='';
+  while(i<a.length&&j<b.length){
+    if(a[i]===b[j]){out+=esc(a[i]);i++;j++;}
+    else if(dp[i+1][j]>=dp[i][j+1]){out+='<del>'+esc(a[i])+'</del>';i++;}
+    else {out+='<ins>'+esc(b[j])+'</ins>';j++;}
+  }
+  while(i<a.length){out+='<del>'+esc(a[i])+'</del>';i++;}
+  while(j<b.length){out+='<ins>'+esc(b[j])+'</ins>';j++;}
+  $('diffBox').innerHTML=out;
+}
+function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+// Strips common markdown emphasis markers (**bold**, __bold__, *italic*, _italic_) from LLM-
+// generated text meant for plain-text contexts (email body, cover letter) — models sometimes
+// add markdown styling despite being told to output plain text.
+function stripMarkdownEmphasis(text){
+  if(!text) return text;
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/(^|[^*\w])\*([^*\n]+?)\*(?!\*)/g, '$1$2')
+    .replace(/(^|[^_\w])_([^_\n]+?)_(?!_)/g, '$1$2');
+}
+
+// --- URL detection for clickable body links ---
+// Plain function declarations (hoisted) with the regex built inside, on purpose: the on-screen
+// preview calls linkSegments() during early session restore, before later top-level `const`s
+// would be initialized — a top-level const regex here would throw a ReferenceError there.
+function linkTargetFor(raw){
+  if(raw.includes('@')) return 'mailto:' + raw;
+  return /^https?:\/\//i.test(raw) ? raw : 'https://' + raw;
+}
+// Splits text into [{text}] / [{text, url}] segments. Trailing punctuation (.,;:)]) is left
+// outside the link so a URL at the end of a sentence still points at the right place.
+function linkSegments(text){
+  const re = /(https?:\/\/[^\s|]+|(?:www\.)?(?:github\.com|gitlab\.com|linkedin\.com)\/[^\s|]+|[\w.+-]+@[\w-]+\.[\w.]+)/gi;
+  const segs = [];
+  let last = 0, m;
+  while((m = re.exec(text))){
+    const raw = m[0].replace(/[.,;:)\]]+$/, '');
+    if(!raw) continue;
+    if(m.index > last) segs.push({ text: text.slice(last, m.index) });
+    segs.push({ text: raw, url: linkTargetFor(raw) });
+    last = m.index + raw.length;
+    re.lastIndex = last;
+  }
+  if(last < text.length) segs.push({ text: text.slice(last) });
+  return segs;
+}
+function linkifyHtml(text, accent){
+  return linkSegments(text).map(seg => seg.url
+    ? `<span style="color:${accent};text-decoration:underline">${esc(seg.text)}</span>`
+    : esc(seg.text)).join('');
+}
+
+// --- ATS ---
+// computeTopKeywords() (and its STOP word list) lives in resume_logic.js now — the exact same
+// keyword-scoring logic the page-fit trimmer uses is what's under test, not a copy of it.
+function renderAts(jobText,resumeText){
+  const top=computeTopKeywords(jobText);
+  const rl=resumeText.toLowerCase(); const hits=top.filter(k=>rl.includes(k));
+  const pct=top.length?Math.round(hits.length/top.length*100):0;
+  $('atsPct').textContent=pct+'% ('+hits.length+' of '+top.length+')';
+  $('atsBar').style.width=pct+'%';
+  $('atsKeywords').innerHTML=top.map(k=>`<span class="kw ${rl.includes(k)?'hit':'miss'}">${esc(k)}</span>`).join('');
+}
+
+// --- Job trend analyser ---
+// Learns, over time, which skills/keywords keep showing up in the job postings you've tailored
+// against — free, local keyword frequency (reuses computeTopKeywords, the same logic the ATS
+// check uses), no extra API calls. Each distinct posting (by content hash) is captured once, so
+// re-tailoring the same posting repeatedly doesn't skew the frequency.
+function simpleHash(str){
+  let h = 0;
+  for(let i=0;i<str.length;i++){ h = (h*31 + str.charCodeAt(i)) | 0; }
+  return h.toString(36);
+}
+const JOB_HISTORY_LIMIT = 200;
+function loadJobHistory(){ try{ return JSON.parse(localStorage.getItem('resumeTailorJobHistory')||'[]'); }catch(e){ return []; } }
+function saveJobHistory(h){ try{ localStorage.setItem('resumeTailorJobHistory', JSON.stringify(h)); }catch(e){} }
+function recordJobForTrends(jobText){
+  if(!jobText) return;
+  const jobKey = simpleHash(jobText);
+  const history = loadJobHistory();
+  if(history.some(h=>h.jobKey===jobKey)) return; // this exact posting is already captured
+  history.unshift({ jobKey, date: new Date().toISOString().slice(0,10), jobText });
+  saveJobHistory(history.slice(0, JOB_HISTORY_LIMIT));
+}
+function computeJobTrendStats(){
+  const history = loadJobHistory();
+  const freq = new Map(); // keyword -> number of postings it appeared in
+  history.forEach(h=>{
+    computeTopKeywords(h.jobText, 40).forEach(k=> freq.set(k, (freq.get(k)||0)+1));
+  });
+  const resumeText = (sections.length ? assembleFullText() : '').toLowerCase();
+  const stats = Array.from(freq.entries())
+    .map(([keyword,count])=>({ keyword, count, pct: history.length?Math.round(count/history.length*100):0, inResume: resumeText.includes(keyword) }))
+    .sort((a,b)=> b.count-a.count || a.keyword.localeCompare(b.keyword));
+  return { postingCount: history.length, stats };
+}
+function renderTrends(){
+  const listEl = $('trendsList'), gapsEl = $('trendsGaps'), summaryEl = $('trendsSummary');
+  if(!listEl) return;
+  const { postingCount, stats } = computeJobTrendStats();
+  if(!postingCount){
+    summaryEl.textContent = 'No job postings analyzed yet — tailor your resume against a few job postings to start seeing trends here.';
+    listEl.innerHTML = ''; gapsEl.innerHTML = '';
+    return;
+  }
+  summaryEl.textContent = `Based on ${postingCount} distinct job posting(s) you've tailored against.`;
+  const top = stats.slice(0,30);
+  listEl.innerHTML = top.map(s=>`<span class="kw ${s.inResume?'hit':'miss'}" title="${s.pct}% of postings">${esc(s.keyword)} · ${s.count}</span>`).join('');
+  const gaps = stats.filter(s=>!s.inResume).slice(0,15);
+  gapsEl.innerHTML = gaps.length
+    ? gaps.map(s=>`<span class="kw miss">${esc(s.keyword)} · in ${s.pct}% of postings</span>`).join('')
+    : '<p class="note">No clear gaps — your current resume already covers the most common terms across the postings you\'ve tailored against.</p>';
+}
+const clearTrendsBtn = $('clearTrendsBtn');
+if(clearTrendsBtn) clearTrendsBtn.addEventListener('click', ()=>{
+  if(!confirm('Clear all stored job-trend history? This only affects the Trends tab, not your applications or resume.')) return;
+  try{ localStorage.removeItem('resumeTailorJobHistory'); }catch(e){}
+  renderTrends();
+  showStatus('Trend history cleared.', 'info');
+});
+renderTrends();
+
+// --- Export ---
+$('copyBtn').addEventListener('click', async ()=>{
+  try{ await navigator.clipboard.writeText(assembleFullText()); showStatus('Copied to clipboard.','info'); }
+  catch(e){ showStatus('Could not copy automatically — select the text manually instead.','error'); }
+});
+$('downloadTxt').addEventListener('click',()=>{
+  const blob=new Blob([assembleFullText()],{type:'text/plain'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='tailored_resume.txt'; a.click();
+});
+
+// --- Application tracker ---
+function loadApps(){ try{ return JSON.parse(localStorage.getItem('resumeTailorApps')||'[]'); }catch(e){ return []; } }
+function saveApps(apps){ try{ localStorage.setItem('resumeTailorApps', JSON.stringify(apps)); }catch(e){} }
+// Best-effort guess only — job postings aren't consistently formatted, so this is a starting
+// point for the auto-logged entry's company/role, meant to be corrected via the "Edit" action
+// below rather than trusted as accurate.
+function guessCompanyRole(jobText){
+  const lines = jobText.split('\n').map(l=>l.trim()).filter(Boolean);
+  let role = '', company = '';
+  const roleMatch = jobText.match(/(?:job title|position|role)\s*:\s*(.+)/i);
+  if(roleMatch) role = roleMatch[1].trim();
+  else if(lines[0] && lines[0].length < 80) role = lines[0];
+  const companyMatch = jobText.match(/(?:company|employer|organization)\s*:\s*(.+)/i) || jobText.match(/\bat\s+([A-Z][A-Za-z0-9&.,' -]{1,40})\b/);
+  if(companyMatch) company = companyMatch[1].trim().replace(/[.,]+$/,'');
+  return { role: role.slice(0,80), company: company.slice(0,60) };
+}
+// Auto-logs (or refreshes) an application entry whenever the user takes an action that signals
+// they're actually about to apply (downloading the resume, opening the email draft) — so
+// applications aren't only tracked if the user remembers to click "Log this application".
+// Dedup key is a hash of the job description text: acting again for the SAME posting updates
+// the existing entry (fresher snapshot/ATS score) instead of creating a duplicate.
+function autoLogApplication(){
+  if(!sections.length) return; // nothing tailored yet — no meaningful snapshot to log
+  const jobText = $('jobText').value.trim();
+  if(!jobText) return;
+  const jobKey = simpleHash(jobText);
+  const apps = loadApps();
+  const existing = apps.find(a=>a.jobKey===jobKey);
+  const ats = $('atsPct').textContent||'';
+  const resumeSnapshot = assembleFullText();
+  const today = new Date().toISOString().slice(0,10);
+  if(existing){
+    existing.ats = ats; existing.resumeSnapshot = resumeSnapshot; existing.date = today;
+    saveApps(apps); renderApps();
+    return;
+  }
+  const guess = guessCompanyRole(jobText);
+  apps.unshift({ company: guess.company, role: guess.role, date: today, ats, resumeSnapshot, jobKey, source:'auto' });
+  saveApps(apps); renderApps();
+}
+function renderApps(){
+  const apps = loadApps();
+  const el = $('appsList');
+  if(!apps.length){ el.innerHTML = '<p class="note">No applications logged yet.</p>'; return; }
+  el.innerHTML = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:.85rem">'+
+    '<tr style="text-align:left;border-bottom:1px solid var(--line)"><th style="padding:4px">Company</th><th style="padding:4px">Role</th><th style="padding:4px">Date</th><th style="padding:4px">ATS match</th><th></th><th></th><th></th></tr>'+
+    apps.map((a,i)=>`<tr style="border-bottom:1px solid var(--line)">
+      <td style="padding:4px">${esc(a.company||'(unknown)')}${a.source==='auto'?' <span class="kw miss" style="font-size:.6rem;padding:1px 6px">auto</span>':''}</td><td style="padding:4px">${esc(a.role||'')}</td>
+      <td style="padding:4px">${esc(a.date||'')}</td><td style="padding:4px">${esc(a.ats||'')}</td>
+      <td style="padding:4px">${a.resumeSnapshot?`<button class="tiny" data-action="download" data-i="${i}">Download resume</button>`:''}</td>
+      <td style="padding:4px"><button class="tiny" data-action="edit" data-i="${i}">Edit</button></td>
+      <td style="padding:4px"><button class="tiny" data-action="remove" data-i="${i}">Remove</button></td></tr>`).join('')+
+    '</table></div>';
+  el.querySelectorAll('button.tiny').forEach(b=>b.addEventListener('click', e=>{
+    const i = e.target.dataset.i, apps2 = loadApps();
+    if(e.target.dataset.action==='download'){
+      const a = apps2[i]; if(!a || !a.resumeSnapshot) return;
+      const blob = new Blob([a.resumeSnapshot], {type:'text/plain'});
+      const link = document.createElement('a'); link.href = URL.createObjectURL(blob);
+      link.download = `resume_${(a.company||'application').replace(/[^a-z0-9]+/gi,'_')}.txt`; link.click();
+    } else if(e.target.dataset.action==='edit'){
+      const a = apps2[i]; if(!a) return;
+      const company = prompt('Company name?', a.company||'');
+      if(company===null) return;
+      const role = prompt('Role / job title?', a.role||'');
+      if(role===null) return;
+      a.company = company; a.role = role; delete a.source;
+      saveApps(apps2); renderApps();
+    } else {
+      apps2.splice(i,1); saveApps(apps2); renderApps();
+    }
+  }));
+}
+$('logAppBtn').addEventListener('click', ()=>{
+  const company = prompt('Company name?') || '';
+  const role = prompt('Role / job title?') || '';
+  if(!company && !role){ return; }
+  const jobText = $('jobText').value.trim();
+  const jobKey = jobText ? simpleHash(jobText) : null;
+  const apps = loadApps();
+  const existing = jobKey ? apps.find(a=>a.jobKey===jobKey) : null;
+  const entry = { company, role, date: new Date().toISOString().slice(0,10), ats: $('atsPct').textContent||'', resumeSnapshot: sections.length ? assembleFullText() : '', jobKey };
+  if(existing){ Object.assign(existing, entry); delete existing.source; }
+  else { apps.unshift(entry); }
+  saveApps(apps); renderApps();
+  showStatus('Application logged'+(sections.length?' with a snapshot of the current tailored resume.':'.'), 'info');
+});
+renderApps();
+
+// isBulletLine(), isLabelLine(), and computeLineRoles() live in resume_logic.js now (see note
+// near assembleFullText above) — shared, tested logic rather than a duplicate copy.
+
+const CARLITO_BASE = 'https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/carlito/';
+let carlitoLoaded = null; // cache the loaded font so repeated exports don't re-download
+async function fetchFontBase64(url){
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  let binary = ''; const chunk = 0x8000;
+  for(let i=0;i<bytes.length;i+=chunk) binary += String.fromCharCode.apply(null, bytes.subarray(i,i+chunk));
+  return btoa(binary);
+}
+async function loadCarlito(doc){
+  if(carlitoLoaded === false) return false;
+  if(carlitoLoaded === true){
+    doc.addFileToVFS('Carlito-Regular.ttf', loadCarlito._reg); doc.addFont('Carlito-Regular.ttf','Carlito','normal');
+    doc.addFileToVFS('Carlito-Bold.ttf', loadCarlito._bold); doc.addFont('Carlito-Bold.ttf','Carlito','bold');
+    doc.addFileToVFS('Carlito-Italic.ttf', loadCarlito._ital); doc.addFont('Carlito-Italic.ttf','Carlito','italic');
+    return true;
+  }
+  try{
+    const [reg, bold, ital] = await Promise.all([
+      fetchFontBase64(CARLITO_BASE+'Carlito-Regular.ttf'),
+      fetchFontBase64(CARLITO_BASE+'Carlito-Bold.ttf'),
+      fetchFontBase64(CARLITO_BASE+'Carlito-Italic.ttf')
+    ]);
+    loadCarlito._reg=reg; loadCarlito._bold=bold; loadCarlito._ital=ital; carlitoLoaded = true;
+    doc.addFileToVFS('Carlito-Regular.ttf', reg); doc.addFont('Carlito-Regular.ttf','Carlito','normal');
+    doc.addFileToVFS('Carlito-Bold.ttf', bold); doc.addFont('Carlito-Bold.ttf','Carlito','bold');
+    doc.addFileToVFS('Carlito-Italic.ttf', ital); doc.addFont('Carlito-Italic.ttf','Carlito','italic');
+    return true;
+  } catch(e){ console.warn('Could not load Carlito, falling back to Helvetica:', e); carlitoLoaded = false; return false; }
+}
+
+// Shared PDF layout constants + renderer — hoisted out of the download-PDF handler so the
+// page-count-fit trimmer (trimSectionsToTarget) can also measure page count against the
+// same layout, without duplicating it or triggering an actual file download.
+const PDF_JOB_GAP = 5; // extra space before the 2nd+ job/project within the same section — structural, not a detected style value
+// Tightens line-height and inter-section/job/heading gaps (never font size) as a last resort
+// for hitting an exact page-count target before giving up and growing to the next page count.
+// Toggled by applyPageTargetIfNeeded; reset to false at the start of every export attempt.
+let COMPACT_SPACING = false;
+// Opposite direction: when the tailored content is naturally SHORTER than the selected page
+// target, stretches line/section/heading spacing (never font size) so the last page doesn't
+// trail off half-empty. 1 = normal; >1 spreads content out. Reset to 1 at the start of every
+// export attempt, same as COMPACT_SPACING.
+let SPACING_SCALE = 1;
+
+function renderResume(doc, FONT, extraBulletGap){
+  // Read all sizing/color/margin values from STYLE (defaults, or auto-detected from the
+  // uploaded resume) and shape from LAYOUT (header alignment, column count) so every render —
+  // including the trim-pass page-count measurements — reflects the same style consistently.
+  const marginX=STYLE.marginXpt, maxWidth=STYLE.maxWidthPt, pageCenterX=STYLE.pageWidthPt/2, topY=STYLE.topYpt,
+        bottomMargin=STYLE.bottomMarginPt, pageHeightPt=STYLE.pageHeightPt, NAME_SZ=STYLE.nameSz, TITLE_SZ=STYLE.titleSz,
+        CONTACT1_SZ=STYLE.contactSz, CONTACT2_SZ=STYLE.contactSz, HEAD_SZ=STYLE.headSz, BODY_SZ=STYLE.bodySz,
+        ACCENT=STYLE.accentRgb;
+  // Spacing-only levers for COMPACT_SPACING/SPACING_SCALE — font sizes above (NAME_SZ/TITLE_SZ/
+  // HEAD_SZ/BODY_SZ) are never touched by either.
+  const LINE_MULT = (COMPACT_SPACING ? 1.05 : 1.15) * SPACING_SCALE;
+  const SECTION_GAP = (COMPACT_SPACING ? 4 : 7) * SPACING_SCALE;
+  const JOB_GAP = (COMPACT_SPACING ? Math.max(2, PDF_JOB_GAP-3) : PDF_JOB_GAP) * SPACING_SCALE;
+  const HEAD_TAIL_GAP = (COMPACT_SPACING ? 1 : 3) * SPACING_SCALE;
+  const HEAD_TAIL_GAP_SIDEBAR = (COMPACT_SPACING ? 0 : 1) * SPACING_SCALE;
+  const useColumns = effectiveColumns()===2;
+  const sidebarWidth = useColumns ? Math.round(STYLE.pageWidthPt*0.30) : 0;
+  const gutter = 16;
+  const mainX = useColumns ? sidebarWidth + gutter : marginX;
+  const mainWidth = useColumns ? (marginX+maxWidth) - mainX : maxWidth;
+  const sidebarTextX = useColumns ? Math.max(marginX*0.55, 12) : marginX;
+  const sidebarTextWidth = useColumns ? sidebarWidth - sidebarTextX - 10 : 0;
+
+  function bulletDot(x, yy){ doc.setFillColor(20,20,20); doc.circle(x, yy-3, 1.4, 'F'); }
+  // Draws one line of body text segment by segment: URL segments in the accent color (same as
+  // the header links, e.g. LinkedIn), everything else in `baseRgb` (the line's normal color).
+  // Each URL also gets a clickable link annotation and a thin accent underline. Must be called
+  // while the line's font/size is active, so getTextWidth() measures exactly what is drawn.
+  // Drawing each piece once (rather than repainting over text already drawn) avoids
+  // anti-aliasing fringes. The link rect's top is offset up from the baseline by ~0.8 of the
+  // font size to cover the glyphs.
+  function drawLinkedText(text, x, y, fontSize, baseRgb){
+    const base = baseRgb || [20,20,20];
+    let offset = 0;
+    linkSegments(text).forEach(seg=>{
+      const w = doc.getTextWidth(seg.text);
+      if(seg.url){
+        doc.setTextColor(ACCENT[0],ACCENT[1],ACCENT[2]);
+        doc.text(seg.text, x+offset, y);
+        doc.link(x+offset, y-fontSize*0.8, w, fontSize, { url: seg.url });
+        doc.setDrawColor(ACCENT[0],ACCENT[1],ACCENT[2]); doc.setLineWidth(0.4);
+        doc.line(x+offset, y+1, x+offset+w, y+1);
+        doc.setTextColor(base[0],base[1],base[2]);
+      } else {
+        doc.text(seg.text, x+offset, y);
+      }
+      offset += w;
+    });
+  }
+  function sidebarBg(fromY){
+    if(!useColumns) return;
+    const t = ACCENT.map(c=>Math.round(c + (255-c)*0.9));
+    doc.setFillColor(t[0],t[1],t[2]); doc.rect(0, fromY, sidebarWidth, pageHeightPt-fromY, 'F');
+  }
+  function makeEnsure(cursor, onNewPage){ return lh => { if(cursor.y+lh > pageHeightPt-bottomMargin){ doc.addPage(); cursor.y=topY; if(onNewPage) onNewPage(); } }; }
+
+  // -- Header --
+  const headerAlign = LAYOUT.headerAlign;
+  const hx = headerAlign==='center' ? pageCenterX : marginX;
+  const halign = headerAlign==='center' ? 'center' : 'left';
+  let y = topY;
+  function ensure(lh){ if(y+lh > pageHeightPt-bottomMargin){ doc.addPage(); y = topY; } }
+
+  doc.setFont(FONT,'bold'); doc.setFontSize(NAME_SZ); doc.setTextColor(ACCENT[0],ACCENT[1],ACCENT[2]);
+  ensure(NAME_SZ*LINE_MULT); doc.text(header.name, hx, y, {align:halign}); y += NAME_SZ*LINE_MULT;
+
+  doc.setFont(FONT,'normal'); doc.setFontSize(TITLE_SZ); doc.setTextColor(20,20,20);
+  ensure(TITLE_SZ*LINE_MULT); doc.text(header.title, hx, y, {align:halign}); y += TITLE_SZ*LINE_MULT + 2;
+
+  (header.contactLines||[]).forEach((line, lineIdx)=>{
+    const sz = lineIdx===0 ? CONTACT1_SZ : CONTACT2_SZ;
+    doc.setFontSize(sz);
+    const parts = line.split('|').map(p=>p.trim()).filter(Boolean);
+    const widths = parts.map(p => doc.getTextWidth(p));
+    const sep = doc.getTextWidth('   |   ');
+    const totalW = widths.reduce((a,b)=>a+b,0) + sep*(parts.length-1);
+    let x = headerAlign==='center' ? (pageCenterX - totalW/2) : marginX;
+    ensure(sz*LINE_MULT);
+    parts.forEach((p,i)=>{
+      const isLink = /\.com|@|linkedin|github/i.test(p);
+      if(isLink){
+        const url = p.includes('@') ? 'mailto:'+p : (p.startsWith('http')?p:'https://'+p.replace(/^https?:\/\//,''));
+        doc.setTextColor(ACCENT[0],ACCENT[1],ACCENT[2]);
+        doc.textWithLink(p, x, y, {url});
+        doc.setTextColor(20,20,20);
+      } else { doc.text(p, x, y); }
+      x += widths[i];
+      if(i < parts.length-1){ doc.text('   |   ', x, y); x += sep; }
+    });
+    y += sz*LINE_MULT + (lineIdx===0 ? 4 : 0);
+  });
+  y += 4;
+  doc.setDrawColor(ACCENT[0],ACCENT[1],ACCENT[2]); doc.setLineWidth(1.1); doc.line(marginX,y,marginX+maxWidth,y);
+  y += (COMPACT_SPACING ? 8 : 12);
+
+  // -- Body: one shared renderer, called once per column (or once for the whole width) --
+  function renderSectionsBlock(secIdxs, xPos, widthPos, cursor, ensureFn, isSidebar){
+    const headSize = isSidebar ? Math.max(BODY_SZ+0.5, HEAD_SZ-1.5) : HEAD_SZ;
+    secIdxs.forEach(idx=>{
+      const s = sections[idx];
+      if(s.label){
+        doc.setFont(FONT,'bold'); doc.setFontSize(headSize); doc.setTextColor(ACCENT[0],ACCENT[1],ACCENT[2]);
+        const headLines = doc.splitTextToSize(s.label, widthPos);
+        // Reserve room for the FULL heading block — including the underline rule and the gap
+        // below it, both missing from the previous estimate — PLUS the first few lines of the
+        // section's actual content (up to 3: e.g. a bold job title, a date/location line, and
+        // the first bullet), not just one generic body line. Each of those lines has its own
+        // separate ensureFn check further down the loop; reserving for only 1 line here let the
+        // heading pass its own check and get drawn at the bottom of a page, only for one of
+        // those LATER checks to fail and push everything else to the next page — orphaning the
+        // heading even though this ensureFn call looked like it accounted for the content.
+        const gapAfterHead = isSidebar ? HEAD_TAIL_GAP_SIDEBAR : HEAD_TAIL_GAP;
+        const headBlock = headSize*LINE_MULT*headLines.length + 2 + headSize*0.95 + gapAfterHead;
+        const firstLineCount = Math.min(3, s.text.split('\n').filter(l => l.trim()).length);
+        ensureFn(headBlock + BODY_SZ*LINE_MULT*firstLineCount + 4);
+        // Draw every wrapped heading line at a full line-height apart, but only the LAST one
+        // gets the tight, originally-tuned gap before the rule/body — using that same full
+        // line-height for the tail gap (as an earlier refactor did) is what was pushing the
+        // divider rule up into the heading text / the body text up into the rule.
+        headLines.forEach((hl,hi)=>{ doc.text(hl, xPos, cursor.y); if(hi < headLines.length-1) cursor.y += headSize*LINE_MULT; });
+        cursor.y += 2;
+        if(!isSidebar){
+          doc.setDrawColor(ACCENT[0],ACCENT[1],ACCENT[2]); doc.setLineWidth(0.6);
+          doc.line(xPos, cursor.y+2, xPos+widthPos, cursor.y+2); cursor.y += headSize*0.95+HEAD_TAIL_GAP;
+        } else { cursor.y += headSize*0.95+HEAD_TAIL_GAP_SIDEBAR; }
+        doc.setTextColor(20,20,20);
+      }
+      const lines = s.text.split('\n');
+      const roles = computeLineRoles(lines);
+      doc.setFont(FONT,'normal'); doc.setFontSize(BODY_SZ);
+      let seenFirstJob = false;
+      lines.forEach((line, li)=>{
+        const role = roles[li];
+        const clean = role==='bullet' ? line.replace(/^\s*[-•*▪◦►]\s*/,'') : line;
+        const isProjectSubtitle = role==='subheader-bold' && /—|documented on GitHub|personal project/i.test(clean);
+        const labelMatch = role==='plain' ? isLabelLine(clean) : null;
+
+        if(role==='subheader-bold'){
+          if(seenFirstJob) cursor.y += JOB_GAP;
+          seenFirstJob = true;
+        }
+
+        if(role==='subheader-bold' && isProjectSubtitle){
+          doc.setFont(FONT,'italic'); doc.setFontSize(BODY_SZ-0.3); doc.setTextColor(110,110,110);
+          // computeLineRoles only marks a line 'subheader-bold' when a bullet follows it, so
+          // reserving extra room on just the FIRST wrapped line of the title (not every wrapped
+          // line) keeps a job/project title from landing alone at the bottom of a page with its
+          // bullets pushed to the next one — the same orphan problem as section headings, fixed
+          // the same way.
+          doc.splitTextToSize(clean||' ', widthPos).forEach((w,wi)=>{ ensureFn(BODY_SZ*LINE_MULT + (wi===0?BODY_SZ*LINE_MULT:0)); drawLinkedText(w, xPos, cursor.y, BODY_SZ-0.3, [110,110,110]); cursor.y+=BODY_SZ*LINE_MULT; });
+          doc.setFont(FONT,'normal'); doc.setFontSize(BODY_SZ); doc.setTextColor(20,20,20);
+        } else if(role==='subheader-bold'){
+          doc.setFont(FONT,'bold'); doc.setFontSize(BODY_SZ+0.3);
+          doc.splitTextToSize(clean||' ', widthPos).forEach((w,wi)=>{ ensureFn(BODY_SZ*LINE_MULT + (wi===0?BODY_SZ*LINE_MULT:0)); drawLinkedText(w, xPos, cursor.y, BODY_SZ+0.3); cursor.y+=BODY_SZ*LINE_MULT; });
+          doc.setFont(FONT,'normal'); doc.setFontSize(BODY_SZ);
+        } else if(role==='subheader-plain'){
+          doc.setFont(FONT,'normal'); doc.setFontSize(BODY_SZ);
+          doc.splitTextToSize(clean||' ', widthPos).forEach(w=>{ ensureFn(BODY_SZ*LINE_MULT); drawLinkedText(w, xPos, cursor.y, BODY_SZ); cursor.y+=BODY_SZ*LINE_MULT; });
+        } else if(labelMatch && !isSidebar){
+          doc.setFont(FONT,'bold');
+          const labelW = doc.getTextWidth(labelMatch.label+' ');
+          doc.setFont(FONT,'normal');
+          const wrapped = doc.splitTextToSize(labelMatch.rest, widthPos-labelW);
+          ensureFn(BODY_SZ*LINE_MULT);
+          doc.setFont(FONT,'bold'); doc.text(labelMatch.label, xPos, cursor.y);
+          doc.setFont(FONT,'normal'); drawLinkedText(wrapped[0]||'', xPos+labelW, cursor.y, BODY_SZ); cursor.y += BODY_SZ*LINE_MULT;
+          for(let k=1;k<wrapped.length;k++){ ensureFn(BODY_SZ*LINE_MULT); drawLinkedText(wrapped[k], xPos, cursor.y, BODY_SZ); cursor.y+=BODY_SZ*LINE_MULT; }
+        } else {
+          // In the sidebar, keep "Label: value" lines as plain wrapped text (no hanging indent) — the column is too narrow for it to read well.
+          const bullet = role==='bullet' && !isSidebar; // sidebar renders list items as plain lines, not dot bullets — reads cleaner in a narrow column
+          const indent = bullet ? 14 : 0;
+          const wrapped = doc.splitTextToSize(clean||' ', widthPos-indent);
+          wrapped.forEach((w,idx)=>{
+            ensureFn(BODY_SZ*LINE_MULT);
+            if(bullet && idx===0) bulletDot(xPos+4, cursor.y);
+            drawLinkedText(w, xPos+indent, cursor.y, BODY_SZ);
+            cursor.y += BODY_SZ*LINE_MULT;
+          });
+          if(role==='bullet') cursor.y += extraBulletGap;
+        }
+      });
+      cursor.y += SECTION_GAP;
+    });
+  }
+
+  if(useColumns){
+    const {sidebar, main} = classifySectionsForColumns();
+    const startY = y;
+    sidebarBg(startY - 12);
+    const sidebarCursor = {y: startY};
+    const ensureSidebar = makeEnsure(sidebarCursor, ()=>sidebarBg(topY));
+    renderSectionsBlock(sidebar, sidebarTextX, sidebarTextWidth, sidebarCursor, ensureSidebar, true);
+
+    const mainCursor = {y: startY};
+    const ensureMain = makeEnsure(mainCursor, null);
+    renderSectionsBlock(main, mainX, mainWidth, mainCursor, ensureMain, false);
+  } else {
+    const idxs = sections.map((_,i)=>i);
+    const cursor = {y};
+    const ensureFn = makeEnsure(cursor, null);
+    renderSectionsBlock(idxs, marginX, maxWidth, cursor, ensureFn, false);
+  }
+
+  return doc.internal.getNumberOfPages();
+}
+
+// --- Page-count-fit trimming ---
+// Deterministic fallback for the "1 page" / "2 pages" selector: scores every bullet line by
+// how many job-posting keywords it contains (reusing the ATS keyword logic), then repeatedly
+// removes the single lowest-scoring bullet — across the whole resume, never below a 2-bullet
+// floor per section — re-measuring PDF page count after each removal, until it fits or there's
+// nothing left to safely remove. Font size is never touched (explicitly rejected earlier).
+// Each affected section's pre-trim text is snapshotted to its undo history exactly once, so a
+// single "Undo section" click restores everything that section lost in this pass.
+const TRIM_BULLET_FLOOR = 2;
+const TRIM_MAX_ITERATIONS = 60;
+const MIN_SECTIONS_REMAINING = 3; // never drop sections down below this many, as a sanity floor
+
+// getBulletIndices() and getBulletGroups() (the per-job, not per-section, bullet-floor
+// grouping) live in resume_logic.js now — see note near assembleFullText above.
+
+// Sections that are never dropped wholesale, no matter how low their job-relevance score —
+// only bullet-trimmed (above) down to the per-section floor.
+const PROTECTED_SECTION_KEYWORDS = /^(professional experience|experience|work experience|employment|career history|education|summary|professional summary|profile|objective|core technical skills|technical skills|skills)\b/i;
+
+// Among everything else, not all sections are equally disposable. Tier = drop priority:
+// lower tier number = dropped first. Certifications rank above real/personal/featured projects
+// (both outrank generic extras like Honors & Awards or Academic/coursework projects) — but
+// Certifications are additionally fully protected below, never dropped as a whole section at
+// all, so this function's own "certifications" case is effectively unreachable/defensive only.
+function getSectionTier(label){
+  const l = (label||'').trim();
+  if(/^academic\b/i.test(l)) return 1;      // coursework/academic projects — lowest priority among droppable
+  if(/project/i.test(l)) return 2;          // featured/personal/additional projects — dropped before Certifications, at least 1 always kept
+  return 1;                                 // default: Honors & Awards, Languages, Interests, etc.
+}
+
+function scoreSectionRelevance(section, keywords){
+  const text = ((section.label||'') + ' ' + section.text).toLowerCase();
+  return keywords.reduce((n,k)=>n + (text.includes(k) ? 1 : 0), 0);
+}
+
+let lastSectionDropSnapshot = null; // whole-sections-array snapshot, for the one-click "restore" affordance
+
+// Whole-section removal pass. `onlyZeroScore` restricts it to sections with NO job-keyword
+// overlap at all — used as the first, safe pass (dropping a section that contributes nothing
+// can't cost you anything). Without that restriction it's the last-resort pass, used only when
+// bullet-level trimming alone couldn't fit the target. Tier priority + a "keep at least one
+// project" rule (never drop the last remaining project-tier section wholesale — it still gets
+// bullet-trimmed instead) both apply in either mode.
+async function dropIrrelevantSections(targetPages, jobText, FONT, onlyZeroScore){
+  const keywords = computeTopKeywords(jobText, 25);
+  const droppedLabels = [];
+  const droppedSections = []; // {section, originalIndex} in removal order — lets the backfill pass below try restoring them
+  let snapshotTaken = false;
+
+  for(let iter=0; iter<10; iter++){
+    const pages = await measurePageCount(FONT);
+    if(pages <= targetPages) return { fits:true, droppedLabels, droppedSections, finalPages:pages };
+    if(sections.length <= MIN_SECTIONS_REMAINING) return { fits:false, droppedLabels, droppedSections, finalPages:pages };
+
+    let candidates = sections
+      .map((s,i)=>({ i, s,
+        tier: (s.label && (PROTECTED_SECTION_KEYWORDS.test(s.label.trim()) || NEVER_TRIM_BULLETS_KEYWORDS.test(s.label.trim()))) ? Infinity : getSectionTier(s.label),
+        score: scoreSectionRelevance(s, keywords) }))
+      .filter(c => c.tier !== Infinity); // Certifications match NEVER_TRIM_BULLETS_KEYWORDS, so they're fully excluded here too — "always include maximum certificates" means never dropped, not just dropped last
+    if(onlyZeroScore) candidates = candidates.filter(c => c.score === 0);
+
+    const projectCount = candidates.filter(c=>c.tier===2).length;
+    candidates = candidates.filter(c => !(c.tier===2 && projectCount<=1)); // never drop the last remaining project wholesale
+
+    if(!candidates.length) return { fits:false, droppedLabels, droppedSections, finalPages:pages };
+
+    candidates.sort((a,b)=> a.tier-b.tier || a.score-b.score);
+    const worst = candidates[0];
+    if(!snapshotTaken){ lastSectionDropSnapshot = sections.map(s=>({...s, history:s.history.slice()})); snapshotTaken = true; }
+    droppedLabels.push(worst.s.label || '(untitled section)');
+    droppedSections.push({ section: worst.s, originalIndex: worst.i });
+    sections.splice(worst.i, 1);
+  }
+  const finalPages = await measurePageCount(FONT);
+  return { fits: finalPages<=targetPages, droppedLabels, droppedSections, finalPages };
+}
+
+// After the trim+drop pipeline converges, try undoing whole-section drops starting with the
+// LEAST necessary cut first (the last one made) — keep any restoration that still fits. This is
+// what actually prevents "fits, but with a block of dead space at the bottom": the drop pass
+// above only ever removes content to get under the target, never checks whether it removed more
+// than it needed to.
+async function backfillDroppedSections(targetPages, FONT, droppedSectionsInOrder){
+  const restoredLabels = [];
+  for(let k=droppedSectionsInOrder.length-1; k>=0; k--){
+    const {section, originalIndex} = droppedSectionsInOrder[k];
+    const insertAt = Math.min(originalIndex, sections.length);
+    sections.splice(insertAt, 0, section);
+    const pages = await measurePageCount(FONT);
+    if(pages <= targetPages){
+      restoredLabels.push(section.label || '(untitled section)');
+    } else {
+      sections.splice(insertAt, 1); // didn't fit after all — put it back out
+    }
+  }
+  return restoredLabels;
+}
+
+function updateDropRestoreButton(){
+  const btn = $('restoreDroppedBtn');
+  if(btn) btn.style.display = lastSectionDropSnapshot ? '' : 'none';
+}
+function clearSectionDropSnapshot(){ lastSectionDropSnapshot = null; updateDropRestoreButton(); }
+
+async function measurePageCount(FONT){
+  const { jsPDF } = window.jspdf;
+  const scratch = new jsPDF({unit:'pt', format:[STYLE.pageWidthPt, STYLE.pageHeightPt]});
+  // jsPDF fonts are registered per document instance, not globally — without this, a fresh
+  // scratch doc silently falls back to a different font's metrics than the real export uses,
+  // which was making the trim loop think content already fit when it didn't (root cause of
+  // "selected 1 page, still got 2"). loadCarlito() is cheap to call repeatedly once the font
+  // bytes are cached (no network refetch), so this is safe to call on every measurement.
+  if(FONT === 'Carlito') await loadCarlito(scratch);
+  return renderResume(scratch, FONT, 0); // tightest spacing for measuring — consistent worst-case
+}
+
+// Opposite of the shrink-to-fit trimming below: when the tailored content is naturally SHORTER
+// than the selected page target (e.g. a 1-page resume with "2 pages" selected), walks
+// SPACING_SCALE up in small steps and keeps the largest value that still measures at or under
+// the target page count — spreading the SAME real content out more generously instead of
+// leaving the later page mostly blank. Never changes font size and never invents text.
+const SPACING_SCALE_MAX = 1.6;
+const SPACING_SCALE_STEP = 0.1;
+async function expandSpacingToFill(targetPages, FONT){
+  let best = 1;
+  for(let scale=1+SPACING_SCALE_STEP; scale<=SPACING_SCALE_MAX+1e-9; scale+=SPACING_SCALE_STEP){
+    SPACING_SCALE = scale;
+    const pages = await measurePageCount(FONT);
+    if(pages <= targetPages) best = scale; else break;
+  }
+  SPACING_SCALE = best;
+  return best;
+}
+
+const NEVER_TRIM_BULLETS_KEYWORDS = /^(certifications?|licenses?)\b/i; // keep every certificate — never bullet-trimmed, only ever dropped (if at all) as an absolute last resort at the whole-section level
+
+async function trimSectionsToTarget(targetPages, jobText, FONT){
+  const keywords = computeTopKeywords(jobText, 25);
+  const scoreLine = (line) => { const lw=line.toLowerCase(); return keywords.reduce((n,k)=>n+(lw.includes(k)?1:0),0); };
+  const snapshotted = new Set();
+  let removedCount = 0;
+
+  for(let iter=0; iter<TRIM_MAX_ITERATIONS; iter++){
+    const pages = await measurePageCount(FONT);
+    if(pages <= targetPages) return { fits:true, removedCount, finalPages:pages };
+
+    // Find the globally lowest-scoring removable bullet, with the floor enforced per job/
+    // sub-entry (getBulletGroups) rather than per whole section — see getBulletGroups' comment.
+    let worst = null; // {sectionIdx, lineIdx, score}
+    sections.forEach((s, si)=>{
+      if(s.label && NEVER_TRIM_BULLETS_KEYWORDS.test(s.label.trim())) return; // certifications: never touched here
+      const groups = getBulletGroups(s.text);
+      const lines = s.text.split('\n');
+      groups.forEach(group=>{
+        if(group.length <= TRIM_BULLET_FLOOR) return; // this job/entry is already at its floor
+        group.forEach(li=>{
+          const score = scoreLine(lines[li]);
+          if(!worst || score < worst.score) worst = {sectionIdx:si, lineIdx:li, score};
+        });
+      });
+    });
+    if(!worst){
+      const pages2 = await measurePageCount(FONT);
+      return { fits:false, removedCount, finalPages:pages2 }; // nothing left we're willing to remove
+    }
+    const s = sections[worst.sectionIdx];
+    if(!snapshotted.has(worst.sectionIdx)){ s.history.push(s.text); snapshotted.add(worst.sectionIdx); }
+    const lines = s.text.split('\n');
+    lines.splice(worst.lineIdx, 1);
+    s.text = lines.join('\n');
+    removedCount++;
+  }
+  const pagesFinal = await measurePageCount(FONT);
+  return { fits: pagesFinal<=targetPages, removedCount, finalPages: pagesFinal };
+}
+
+async function fitToTarget(targetPages, jobText, FONT){
+  // Phase 1: drop whole sections with ZERO job-keyword overlap — safe, since content that
+  // matches nothing wasn't going to help either way, and this is the cheapest clean cut
+  // (e.g. Honors & Awards when the posting never touches it).
+  const zeroDrop = await dropIrrelevantSections(targetPages, jobText, FONT, true);
+  let droppedLabels = zeroDrop.droppedLabels.slice();
+  let droppedSections = zeroDrop.droppedSections.slice();
+
+  // Phase 2: fine-grained bullet trimming of whatever remains. Tried BEFORE any further whole-
+  // section removal — dropping an entire section that still has some relevance (Certifications,
+  // a real project) is coarse and can overshoot the page boundary by a lot, leaving a block of
+  // dead space; trimming bullet-by-bullet lands much closer to the actual target.
+  let totalRemoved = 0, bulletResult = null;
+  if(!zeroDrop.fits){
+    for(let round=0; round<3; round++){
+      bulletResult = await trimSectionsToTarget(targetPages, jobText, FONT);
+      totalRemoved += bulletResult.removedCount;
+      if(bulletResult.fits || bulletResult.removedCount===0) break;
+    }
+  }
+
+  // Phase 3 (last resort): still doesn't fit even trimmed to every section's floor — now drop
+  // whole lower-priority sections even if they have some relevance, by tier (Honors/Academic
+  // first, Certifications next, a lone remaining Project protected until nothing else is left).
+  let fits = zeroDrop.fits || (bulletResult && bulletResult.fits);
+  let finalPages = bulletResult ? bulletResult.finalPages : zeroDrop.finalPages;
+  if(!fits){
+    const lastResort = await dropIrrelevantSections(targetPages, jobText, FONT, false);
+    droppedLabels = droppedLabels.concat(lastResort.droppedLabels);
+    droppedSections = droppedSections.concat(lastResort.droppedSections);
+    fits = lastResort.fits;
+    finalPages = lastResort.finalPages;
+  }
+
+  // Phase 4: a whole-section drop can overshoot by more than necessary, leaving dead space at
+  // the bottom of the last page. backfillDroppedSections was previously defined but never
+  // called anywhere in this pipeline — this is the actual root cause of exports that "fit" the
+  // page target but leave the bottom half-empty. Try restoring each dropped section, least-
+  // necessary cut (the last one made) first, keeping any restoration that still fits.
+  if(droppedSections.length){
+    const restoredLabels = await backfillDroppedSections(targetPages, FONT, droppedSections);
+    if(restoredLabels.length){
+      droppedLabels = droppedLabels.filter(l => !restoredLabels.includes(l));
+      finalPages = await measurePageCount(FONT);
+      fits = finalPages <= targetPages;
+    }
+  }
+
+  return { fits, droppedLabels, removedCount: totalRemoved, finalPages };
+}
+
+async function applyPageTargetIfNeeded(jobText, FONT){
+  COMPACT_SPACING = false; // reset stale state left over from a previous export before this one starts
+  SPACING_SCALE = 1; // reset stale expand-to-fill state too
+  const sel = $('targetPages').value;
+  if(sel === 'auto' || !sections.length) return null;
+  let targetPages = parseInt(sel, 10);
+  showStatus(`Fitting to ${targetPages} page(s) — removing irrelevant sections and trimming low-relevance bullets if needed...`, 'info');
+
+  let result = await fitToTarget(targetPages, jobText, FONT);
+  let autoUpgraded = false;
+  let usedCompactSpacing = false;
+  // "1 page" is a preference, not a hard rule that should gut genuinely relevant content —
+  // but before accepting that and growing to 2 pages, try tightening line-height and the gaps
+  // between sections/jobs/headings first (COMPACT_SPACING — never font size). That alone often
+  // reclaims enough room to fit page 1 without cutting anything else or adding a page.
+  if(!result.fits && targetPages === 1){
+    COMPACT_SPACING = true;
+    const compact = await fitToTarget(1, jobText, FONT);
+    if(compact.fits){
+      result = { fits:true, droppedLabels:[...result.droppedLabels, ...compact.droppedLabels], removedCount: result.removedCount+compact.removedCount, finalPages: compact.finalPages };
+      usedCompactSpacing = true;
+    } else {
+      COMPACT_SPACING = false;
+      const upgraded = await fitToTarget(2, jobText, FONT);
+      result = { fits: upgraded.fits, droppedLabels: [...result.droppedLabels, ...upgraded.droppedLabels], removedCount: result.removedCount + upgraded.removedCount, finalPages: upgraded.finalPages };
+      targetPages = 2;
+      autoUpgraded = true;
+    }
+  }
+
+  if(result.droppedLabels.length > 0 || result.removedCount > 0){ renderSections(); autoSave(); updateDropRestoreButton(); }
+
+  // If the (now-fitting) content falls short of the page target, spread it out rather than
+  // leaving the rest of the last page blank — see expandSpacingToFill() above.
+  let usedExpandedSpacing = false;
+  if(result.fits){
+    const currentPages = await measurePageCount(FONT);
+    if(currentPages < targetPages){
+      const scale = await expandSpacingToFill(targetPages, FONT);
+      usedExpandedSpacing = scale > 1;
+    }
+  }
+
+  return { fits: result.fits, removedCount: result.removedCount, droppedLabels: result.droppedLabels, finalPages: result.finalPages, effectiveTargetPages: targetPages, autoUpgraded, usedCompactSpacing, usedExpandedSpacing };
+}
+
+$('downloadPdf').addEventListener('click', async () => {
+  if(!sections.length){ showStatus('Tailor a resume first.','error'); return; }
+  const { jsPDF } = window.jspdf;
+  showStatus('Loading Calibri-compatible font...', 'info');
+  const BODY_SZ = STYLE.bodySz;
+
+  const scratch = new jsPDF({unit:'pt', format:[STYLE.pageWidthPt, STYLE.pageHeightPt]});
+  const gotCarlitoScratch = await loadCarlito(scratch);
+  const FONT = gotCarlitoScratch ? 'Carlito' : 'helvetica';
+
+  const targetSel = $('targetPages').value;
+  const trimResult = await applyPageTargetIfNeeded($('jobText').value.trim(), FONT);
+  const originalPages = targetSel==='auto' ? (originalPageCount || 1) : (trimResult ? trimResult.effectiveTargetPages : parseInt(targetSel, 10));
+
+  const EXTRA_BULLET_GAP = 2;
+  const pagesWithExtraSpacing = renderResume(scratch, FONT, EXTRA_BULLET_GAP);
+  const chosenGap = pagesWithExtraSpacing <= originalPages ? EXTRA_BULLET_GAP : 0;
+
+  const doc = new jsPDF({unit:'pt', format:[STYLE.pageWidthPt, STYLE.pageHeightPt]});
+  await loadCarlito(doc);
+  const actualPages = renderResume(doc, FONT, chosenGap);
+
+  const droppedNote = (trimResult && trimResult.droppedLabels && trimResult.droppedLabels.length)
+    ? ` Removed as not relevant to this job: ${trimResult.droppedLabels.join(', ')} (one click to restore below the page-count selector).` : '';
+  const upgradeNote = (trimResult && trimResult.autoUpgraded) ? ` Your content needed more room than 1 page honestly allows even after trimming, so this grew to 2 pages instead of cutting further.` : '';
+  const compactNote = (trimResult && trimResult.usedCompactSpacing) ? ` Tightened line and section spacing (not font size) so everything fits on ${originalPages} page(s).` : '';
+  const expandNote = (trimResult && trimResult.usedExpandedSpacing) ? ` Spread out line and section spacing (not font size, no invented text) so the content fills all ${originalPages} page(s) instead of trailing off early.` : '';
+
+  if(trimResult && !trimResult.fits){
+    showStatus(`Trimmed what it could but still ${actualPages} page(s) vs your ${originalPages}-page target — content is too dense to fit without cutting below a readable minimum.${droppedNote} Undo per section, or the restore button, to get anything back.`, 'info');
+  } else if(trimResult && (trimResult.removedCount>0 || trimResult.droppedLabels.length>0 || trimResult.usedCompactSpacing || trimResult.usedExpandedSpacing)){
+    showStatus(`Fit to ${originalPages} page(s) — full text size, nothing shrunk.${droppedNote}${upgradeNote}${compactNote}${expandNote}`, 'info');
+  } else if(actualPages > originalPages){
+    showStatus(`Generated at your resume's normal text size (no shrinking) — this version needed ${actualPages} page(s) vs your ${originalPages}-page target, since the content is longer. Trim a section if you need it shorter.`, 'info');
+  } else if(chosenGap > 0){
+    showStatus(`PDF generated at full-size text, matching your ${originalPages}-page target — with a bit of extra breathing room between bullets since there was spare space on the page.`, 'info');
+  } else {
+    showStatus(`PDF generated at full-size text (${BODY_SZ}pt body) — matches your ${originalPages}-page target.`, 'info');
+  }
+  doc.save('tailored_resume.pdf');
+  autoLogApplication();
+});
+
+// --- DOCX export ---
+$('downloadDocx').addEventListener('click', async () => {
+  if(!sections.length){ showStatus('Tailor a resume first.','error'); return; }
+  try{
+    // Reuse the same PDF-page-based trim pass so a "1 page" / "2 pages" target is honored
+    // in DOCX too, not just the PDF export — the PDF measurement is the deterministic proxy
+    // for page-fitting either format uses (DOCX has no equivalent internal page-measuring API).
+    const { jsPDF } = window.jspdf;
+    const scratchFont = await loadCarlito(new jsPDF({unit:'pt', format:[STYLE.pageWidthPt, STYLE.pageHeightPt]})) ? 'Carlito' : 'helvetica';
+    const trimResult = await applyPageTargetIfNeeded($('jobText').value.trim(), scratchFont);
+
+    const { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, ExternalHyperlink } = window.docx;
+    // All sizes/colors/margins come from STYLE — defaults, or auto-detected from the uploaded
+    // resume. DOCX sizes are half-points (pt*2). "Calibri"/detected font is referenced by name;
+    // Word resolves it locally at open-time, so no embedding/licensing issue here (unlike the
+    // PDF's Carlito workaround).
+    const ACCENT_HEX = STYLE.accentHex;
+    const DOCX_FONT = STYLE.fontFamilyHint || 'Calibri';
+    const hp = pt => Math.round(pt*2);          // pt -> half-points, for TextRun size
+    const twips = pt => Math.round(pt*20);      // pt -> twips, for page margins
+    const PAGE_MARGIN = { top: twips(STYLE.topYpt), bottom: twips(STYLE.bottomMarginPt), left: twips(STYLE.marginXpt), right: twips(STYLE.marginXpt) };
+    const headerAlignDocx = LAYOUT.headerAlign==='left' ? AlignmentType.LEFT : AlignmentType.CENTER;
+    const children = [];
+
+    children.push(new Paragraph({ alignment: headerAlignDocx,
+      children: [new TextRun({ text: header.name, bold: true, size: hp(STYLE.nameSz), color: ACCENT_HEX })] }));
+    children.push(new Paragraph({ alignment: headerAlignDocx,
+      children: [new TextRun({ text: header.title, size: hp(STYLE.titleSz) })] }));
+    (header.contactLines||[]).forEach(line=>{
+      const parts = line.split('|').map(p=>p.trim()).filter(Boolean);
+      const runs = [];
+      parts.forEach((p,i)=>{
+        const isLink = /\.com|@|linkedin|github/i.test(p);
+        if(isLink){
+          const url = p.includes('@') ? 'mailto:'+p : 'https://'+p.replace(/^https?:\/\//,'');
+          runs.push(new ExternalHyperlink({ link: url, children:[new TextRun({text:p, style:'Hyperlink', size:hp(STYLE.contactSz)})] }));
+        } else { runs.push(new TextRun({ text: p, size: hp(STYLE.contactSz) })); }
+        if(i < parts.length-1) runs.push(new TextRun({ text: '   |   ', size: hp(STYLE.contactSz) }));
+      });
+      children.push(new Paragraph({ alignment: headerAlignDocx, children: runs }));
+    });
+    children.push(new Paragraph({ text: '', border: { bottom: { color: ACCENT_HEX, space:1, value:'single', size:8 } } }));
+
+    // Splits body text into plain TextRuns and clickable ExternalHyperlink runs (URLs found by
+    // linkSegments, the same detector the PDF export uses). `opts` carries the surrounding run
+    // formatting (size, italics, bold, color) so non-link text keeps its normal look.
+    function linkRuns(text, opts){
+      return linkSegments(text).map(seg => seg.url
+        ? new ExternalHyperlink({ link: seg.url, children:[new TextRun({ ...opts, text: seg.text, style:'Hyperlink', color: ACCENT_HEX, underline:{} })] })
+        : new TextRun({ ...opts, text: seg.text }));
+    }
+
+    // Shared section-to-paragraphs builder, reused for both a single flowing column and,
+    // when a sidebar layout is detected/chosen, for each side of a borderless two-cell table.
+    function buildBodyParagraphs(secIdxs, isSidebar){
+      const paras = [];
+      secIdxs.forEach(idx=>{
+        const s = sections[idx];
+        if(s.label){
+          // keepNext tells Word to never leave this heading as the last thing on a page — the
+          // paragraph right after it is pulled along to the same page, preventing an orphaned
+          // section heading (mirrors the equivalent PDF fix in renderResume above).
+          paras.push(new Paragraph({ keepNext: true, spacing:{before: Math.round(160*SPACING_SCALE)},
+            children:[new TextRun({ text: s.label, bold:true, size:hp(isSidebar?Math.max(STYLE.bodySz+1,STYLE.headSz-1.5):STYLE.headSz), color: ACCENT_HEX })],
+            border: isSidebar ? undefined : { bottom: { color: ACCENT_HEX, space:1, value:'single', size:4 } } }));
+        }
+        const lines = s.text.split('\n');
+        const roles = computeLineRoles(lines);
+        lines.forEach((line, li)=>{
+          const role = roles[li];
+          const clean = role==='bullet' ? line.replace(/^\s*[-•*▪◦►]\s*/,'') : line;
+          const isProjectSubtitle = role==='subheader-bold' && /—|documented on GitHub|personal project/i.test(clean);
+          const labelMatch = role==='plain' ? isLabelLine(clean) : null;
+          const bodyHp = hp(STYLE.bodySz);
+
+          if(role==='bullet' && !isSidebar){
+            paras.push(new Paragraph({ bullet:{level:0}, children: linkRuns(clean, {size:bodyHp}) }));
+          } else if(role==='subheader-bold' && isProjectSubtitle){
+            paras.push(new Paragraph({ keepNext: true, children: linkRuns(clean, {italics:true, color:'6E6E6E', size:bodyHp}) }));
+          } else if(role==='subheader-bold'){
+            paras.push(new Paragraph({ keepNext: true, children: linkRuns(clean, {bold:true, size:bodyHp}) }));
+          } else if(labelMatch && !isSidebar){
+            paras.push(new Paragraph({ children:[
+              new TextRun({text:labelMatch.label+' ', bold:true, size:bodyHp}),
+              ...linkRuns(labelMatch.rest, {size:bodyHp})
+            ]}));
+          } else {
+            // sidebar bullets/labels render as plain lines — a narrow column reads better without a hanging indent
+            paras.push(new Paragraph({ children: linkRuns(clean, {size:bodyHp}) }));
+          }
+        });
+      });
+      return paras;
+    }
+
+    if(effectiveColumns()===2){
+      const { Table, TableRow, TableCell, WidthType, BorderStyle } = window.docx;
+      const { sidebar, main } = classifySectionsForColumns();
+      const totalWidthTw = twips(STYLE.maxWidthPt);
+      const sidebarWidthTw = Math.round(totalWidthTw*0.32);
+      const mainWidthTw = totalWidthTw - sidebarWidthTw;
+      const noBorder = { style: BorderStyle.NONE, size:0, color:'FFFFFF' };
+      const borders = { top:noBorder, bottom:noBorder, left:noBorder, right:noBorder, insideHorizontal:noBorder, insideVertical:noBorder };
+      children.push(new Table({
+        width: { size: totalWidthTw, type: WidthType.DXA },
+        columnWidths: [sidebarWidthTw, mainWidthTw],
+        borders,
+        rows: [ new TableRow({ children: [
+          new TableCell({ width:{size:sidebarWidthTw,type:WidthType.DXA}, margins:{right:200}, borders, children: buildBodyParagraphs(sidebar, true) }),
+          new TableCell({ width:{size:mainWidthTw,type:WidthType.DXA}, margins:{left:200}, borders, children: buildBodyParagraphs(main, false) })
+        ]}) ]
+      }));
+    } else {
+      children.push(...buildBodyParagraphs(sections.map((_,i)=>i), false));
+    }
+
+    const docx_doc = new Document({
+      styles: { default: { document: { run: { font: DOCX_FONT } } } },
+      sections: [{ properties: { page: { margin: PAGE_MARGIN } }, children }]
+    });
+    const blob = await Packer.toBlob(docx_doc);
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tailored_resume.docx'; a.click();
+    autoLogApplication();
+    if(trimResult && (trimResult.removedCount>0 || trimResult.droppedLabels.length>0)){
+      const droppedNote = trimResult.droppedLabels.length ? ` Removed as not relevant to this job: ${trimResult.droppedLabels.join(', ')}.` : '';
+      const upgradeNote = trimResult.autoUpgraded ? ` Grew to 2 pages since the relevant content needed it after trimming.` : '';
+      showStatus(`DOCX downloaded — fit to ${trimResult.effectiveTargetPages} page(s).${droppedNote}${upgradeNote} Undo per section, or the restore button, if you want anything back. Note: DOCX page breaks can still fall slightly differently than the PDF's even with matching margins/font, since Word's own text layout engine renders it.`, 'info');
+    } else {
+      showStatus('DOCX downloaded.', 'info');
+    }
+  } catch(err){
+    showStatus('Could not generate DOCX: '+err.message, 'error');
+  }
+});
+</script>
+</body>
+</html>

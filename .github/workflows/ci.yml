@@ -1,0 +1,22 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Check relay syntax
+      run: python3 -m py_compile relay/relay.py
+    - name: Build relay image
+      run: docker build -t relay:ci relay
+    - name: Build web image
+      run: docker build -t web:ci app
+    - name: Scan relay image
+      run: docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy:latest image --severity HIGH,CRITICAL relay:ci
+    - name: Render Kubernetes manifests
+      run: |
+        kubectl kustomize k8s/overlays/k3s > /dev/null
+        kubectl kustomize k8s/overlays/eks > /dev/null
